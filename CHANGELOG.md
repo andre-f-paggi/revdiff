@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.4.1 - 2026-05-22
+
+### Bug Fixes
+
+- detect cmux sessions with ghostty env #209 @umputun
+
 ## v1.4.0 - 2026-05-21
 
 ### New Features
