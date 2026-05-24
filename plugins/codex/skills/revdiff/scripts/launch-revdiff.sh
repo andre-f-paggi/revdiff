@@ -137,10 +137,25 @@ $(write_rc_cmd "$SENTINEL")
 LAUNCHER
     chmod +x "$LAUNCH_SCRIPT"
 
-    zellij run --floating --close-on-exit \
-        --width "$POPUP_W" --height "$POPUP_H" \
-        --name "$OVERLAY_TITLE" --cwd "$CWD" \
-        -- "$LAUNCH_SCRIPT" >/dev/null 2>&1
+    ZELLIJ_ORIG_TAB_ID=""
+    if [ -n "${ZELLIJ_PANE_ID:-}" ] && command -v jq >/dev/null 2>&1; then
+        ZELLIJ_ORIG_TAB_ID=$(zellij action list-panes --json --tab 2>/dev/null \
+            | jq -r --arg p "$ZELLIJ_PANE_ID" \
+                '.[] | select((.is_plugin // false) == false and .tab_id != null and .id == ($p | tonumber)) | .tab_id' 2>/dev/null \
+            | head -1 || true)
+    fi
+
+    if [ -n "$ZELLIJ_ORIG_TAB_ID" ] && zellij run --floating --close-on-exit --tab-id "$ZELLIJ_ORIG_TAB_ID" \
+            --width "$POPUP_W" --height "$POPUP_H" \
+            --name "$OVERLAY_TITLE" --cwd "$CWD" \
+            -- "$LAUNCH_SCRIPT" >/dev/null 2>&1; then
+        :
+    else
+        zellij run --floating --close-on-exit \
+            --width "$POPUP_W" --height "$POPUP_H" \
+            --name "$OVERLAY_TITLE" --cwd "$CWD" \
+            -- "$LAUNCH_SCRIPT" >/dev/null 2>&1
+    fi
 
     while [ ! -f "$SENTINEL" ]; do
         sleep 0.3
