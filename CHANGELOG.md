@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.5.0 - 2026-05-31
+
+### New Features
+
+- parse multi-file git diffs piped to stdin #216 @asek-ll
+
+### Improvements
+
+- bump github.com/alecthomas/chroma/v2 from 2.24.1 to 2.25.0 #214 @dependabot
+
+### Bug Fixes
+
+- route popups to originating tab via pane tracking #210 @danruto
+
+### Other
+
+- Align Pi revdiff workflow with Claude review loop #213 @umputun
+
 ## v1.4.1 - 2026-05-22
 
 ### Bug Fixes
