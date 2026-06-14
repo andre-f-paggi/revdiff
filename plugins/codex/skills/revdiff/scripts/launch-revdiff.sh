@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# launch revdiff in a terminal overlay (tmux/zellij/kitty/wezterm/cmux/ghostty/iterm2) and capture annotations.
+# launch revdiff in a terminal overlay (tmux/zellij/herdr/kitty/wezterm/cmux/ghostty/iterm2) and capture annotations.
 # source: .claude-plugin/skills/revdiff/scripts/launch-revdiff.sh (keep in sync)
 # usage: launch-revdiff.sh [ref] [--staged] [--untracked] [--only=file1 ...]
 # output: annotation text from revdiff stdout (empty if no annotations)
@@ -161,6 +161,71 @@ LAUNCHER
         sleep 0.3
     done
     rc=$(read_rc "$SENTINEL")
+    rm -f "$SENTINEL" "$LAUNCH_SCRIPT"
+    print_output_and_exit "${rc:-1}"
+fi
+
+# herdr: open a new fullscreen tab via the herdr CLI (must precede kitty —
+# inside herdr-in-kitty KITTY_LISTEN_ON is set, so the kitty branch would
+# otherwise win and open an overlay window herdr cannot composite into its panes)
+if [ "${HERDR_ENV:-}" = "1" ] && command -v herdr >/dev/null 2>&1; then
+    SENTINEL=$(mktemp "$TMPBASE/revdiff-done-XXXXXX")
+    rm -f "$SENTINEL"
+
+    LAUNCH_SCRIPT=$(mktemp "$TMPBASE/revdiff-launch-XXXXXX")
+    trap 'rm -f "$OUTPUT_FILE" "$SENTINEL" "$SENTINEL.tmp" "$LAUNCH_SCRIPT"' EXIT
+    cat > "$LAUNCH_SCRIPT" <<LAUNCHER
+#!/bin/sh
+$(write_rc_cmd "$SENTINEL")
+LAUNCHER
+    chmod +x "$LAUNCH_SCRIPT"
+
+    # create a focused tab (cwd set so revdiff runs in the caller's directory);
+    # parse the new tab + root pane ids from the JSON reply
+    HERDR_NEW=$(herdr tab create --cwd "$CWD" --label "$OVERLAY_TITLE" --focus 2>&1) || {
+        echo "error: herdr tab create failed: $HERDR_NEW" >&2
+        exit 1
+    }
+    # parse the ids: jq when available, falling back to grep when jq is absent OR
+    # yields empty (e.g. herdr mixed a stderr line into the JSON via 2>&1). || true
+    # keeps a parse miss from tripping set -e so the explicit id check below stays
+    # reachable to emit a real error and close any created tab
+    HERDR_TAB_ID=""
+    HERDR_PANE_ID=""
+    if command -v jq >/dev/null 2>&1; then
+        HERDR_TAB_ID=$(printf '%s' "$HERDR_NEW" | jq -r '.result.tab.tab_id // empty' 2>/dev/null || true)
+        HERDR_PANE_ID=$(printf '%s' "$HERDR_NEW" | jq -r '.result.root_pane.pane_id // empty' 2>/dev/null || true)
+    fi
+    if [ -z "$HERDR_TAB_ID" ]; then
+        HERDR_TAB_ID=$(printf '%s' "$HERDR_NEW" | grep -o '"tab_id":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+    fi
+    if [ -z "$HERDR_PANE_ID" ]; then
+        HERDR_PANE_ID=$(printf '%s' "$HERDR_NEW" | grep -o '"pane_id":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+    fi
+
+    # bail explicitly when ids are missing — sending the launch command into the
+    # wrong pane would type it into the caller's interactive shell
+    if [ -z "$HERDR_PANE_ID" ] || [ -z "$HERDR_TAB_ID" ]; then
+        echo "error: herdr tab create did not return pane/tab ids: $HERDR_NEW" >&2
+        if [ -n "$HERDR_TAB_ID" ]; then
+            herdr tab close "$HERDR_TAB_ID" >/dev/null 2>&1 || true
+        fi
+        rm -f "$SENTINEL" "$LAUNCH_SCRIPT"
+        exit 1
+    fi
+
+    if ! herdr pane run "$HERDR_PANE_ID" "sh $(sq "$LAUNCH_SCRIPT")" >/dev/null 2>&1; then
+        echo "error: herdr pane run failed for pane $HERDR_PANE_ID" >&2
+        herdr tab close "$HERDR_TAB_ID" >/dev/null 2>&1 || true
+        rm -f "$SENTINEL" "$LAUNCH_SCRIPT"
+        exit 1
+    fi
+
+    while [ ! -f "$SENTINEL" ]; do
+        sleep 0.3
+    done
+    rc=$(read_rc "$SENTINEL")
+    herdr tab close "$HERDR_TAB_ID" >/dev/null 2>&1 || true
     rm -f "$SENTINEL" "$LAUNCH_SCRIPT"
     print_output_and_exit "${rc:-1}"
 fi
@@ -448,5 +513,5 @@ LAUNCHER
     print_output_and_exit "${rc:-1}"
 fi
 
-echo "error: no overlay terminal available (requires tmux, zellij, kitty, wezterm, cmux, ghostty, iTerm2, or emacs vterm)" >&2
+echo "error: no overlay terminal available (requires tmux, zellij, herdr, kitty, wezterm, cmux, ghostty, iTerm2, or emacs vterm)" >&2
 exit 1
