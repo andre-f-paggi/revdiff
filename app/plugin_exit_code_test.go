@@ -629,6 +629,7 @@ func launcherBackends() []launcherBackend {
 		{name: "ghostty", command: "osascript", env: map[string]string{"TERM_PROGRAM": "ghostty"}},
 		{name: "iterm2", command: "osascript", env: map[string]string{"ITERM_SESSION_ID": "w0t0p0:ABC"}},
 		{name: "emacs", command: "emacsclient", env: map[string]string{"INSIDE_EMACS": "vterm"}},
+		{name: "windows-terminal", command: "wt", env: map[string]string{"WT_SESSION": "test-session"}},
 	}
 }
 
@@ -666,6 +667,7 @@ func cleanOverlayEnv() map[string]string {
 		"__CFBundleIdentifier":  "",
 		"ITERM_SESSION_ID":      "",
 		"INSIDE_EMACS":          "",
+		"WT_SESSION":            "",
 		"REVDIFF_CONFIG":        "",
 	}
 }

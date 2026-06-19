@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# launch revdiff in a terminal overlay (tmux/zellij/herdr/kitty/wezterm/cmux/ghostty/iterm2) and capture annotations.
+# launch revdiff in a terminal overlay (tmux/zellij/herdr/kitty/wezterm/cmux/ghostty/iterm2/windows-terminal) and capture annotations.
 # source: .claude-plugin/skills/revdiff/scripts/launch-revdiff.sh (keep in sync)
 # usage: launch-revdiff.sh [ref] [--staged] [--untracked] [--only=file1 ...]
 # output: annotation text from revdiff stdout (empty if no annotations)
@@ -523,5 +523,59 @@ LAUNCHER
     print_output_and_exit "${rc:-1}"
 fi
 
-echo "error: no overlay terminal available (requires tmux, zellij, herdr, kitty, wezterm, cmux, ghostty, iTerm2, or emacs vterm)" >&2
+# windows terminal: split-pane via wt.exe (Git Bash), sentinel file for blocking.
+# wt.exe returns immediately, so revdiff's exit code rides back on the sentinel.
+WT_BIN=""
+if command -v wt.exe >/dev/null 2>&1; then
+    WT_BIN=wt.exe
+elif command -v wt >/dev/null 2>&1; then
+    WT_BIN=wt
+fi
+if [ -n "${WT_SESSION:-}" ] && [ -n "$WT_BIN" ]; then
+    SENTINEL=$(mktemp "$TMPBASE/revdiff-done-XXXXXX")
+    rm -f "$SENTINEL"
+
+    LAUNCH_SCRIPT=$(mktemp "$TMPBASE/revdiff-launch-XXXXXX")
+    trap 'rm -f "$OUTPUT_FILE" "$SENTINEL" "$SENTINEL.tmp" "$LAUNCH_SCRIPT"' EXIT
+    # cd inside the script: wt.exe has no POSIX-path startingDirectory we can
+    # rely on from Git Bash, so the script localizes the working directory
+    cat > "$LAUNCH_SCRIPT" <<LAUNCHER
+#!/bin/sh
+cd $(sq "$CWD") && $(write_rc_cmd "$SENTINEL")
+LAUNCHER
+    chmod +x "$LAUNCH_SCRIPT"
+
+    # wt.exe --size takes a fraction (0-1), not a percentage; clamp to a sane split
+    WT_PCT="${REVDIFF_POPUP_HEIGHT:-90%}"
+    WT_PCT="${WT_PCT%%%}"
+    case "$WT_PCT" in
+        ''|*[!0-9]*) WT_PCT=90 ;;
+    esac
+    [ "$WT_PCT" -ge 100 ] && WT_PCT=95
+    [ "$WT_PCT" -lt 10 ] && WT_PCT=10
+    WT_SIZE="0.$WT_PCT"
+
+    # wt.exe resolves the pane program against the Windows PATH, where Git Bash's
+    # bash.exe usually is not; hand it the absolute Windows path when cygpath is
+    # present, falling back to the bare name (the overlay-test fakes use a Linux bash)
+    WT_BASH=bash
+    if command -v cygpath >/dev/null 2>&1; then
+        _wt_bash=$(command -v bash 2>/dev/null || true)
+        [ -n "$_wt_bash" ] && WT_BASH=$(cygpath -w "$_wt_bash")
+    fi
+
+    # -w 0 targets the current window; the launch script path stays POSIX so the
+    # spawned bash opens it correctly (wt.exe forwards the argument verbatim)
+    "$WT_BIN" -w 0 split-pane --size "$WT_SIZE" --title "$OVERLAY_TITLE" \
+        "$WT_BASH" "$LAUNCH_SCRIPT" >/dev/null 2>&1
+
+    while [ ! -f "$SENTINEL" ]; do
+        sleep 0.3
+    done
+    rc=$(read_rc "$SENTINEL")
+    rm -f "$SENTINEL" "$LAUNCH_SCRIPT"
+    print_output_and_exit "${rc:-1}"
+fi
+
+echo "error: no overlay terminal available (requires tmux, zellij, herdr, kitty, wezterm, cmux, ghostty, iTerm2, emacs vterm, or windows terminal)" >&2
 exit 1

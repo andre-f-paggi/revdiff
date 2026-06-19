@@ -14,7 +14,7 @@ brew install umputun/apps/revdiff
 /plugin install revdiff@revdiff
 ```
 
-Use: `/revdiff [base] [against]` — opens review session in a terminal overlay (tmux, Zellij, herdr, kitty, wezterm, cmux, ghostty, iTerm2, or Emacs vterm).
+Use: `/revdiff [base] [against]` — opens review session in a terminal overlay (tmux, Zellij, herdr, kitty, wezterm, cmux, ghostty, iTerm2, Emacs vterm, or Windows Terminal).
 
 cmux is detected before ghostty when `$CMUX_SURFACE_ID` is set, `__CFBundleIdentifier=com.cmuxterm.app`, or `GHOSTTY_RESOURCES_DIR` / `GHOSTTY_BIN_DIR` contains `cmux.app`, so cmux uses the cmux CLI instead of Ghostty AppleScript.
 

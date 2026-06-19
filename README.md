@@ -91,12 +91,15 @@ The plugin requires one of the following terminals since Claude Code itself cann
 | **ghostty** | AppleScript split + zoom (macOS only) | `$TERM_PROGRAM` + AppleScript probe |
 | **iTerm2** | `osascript` split pane (macOS only) | `$ITERM_SESSION_ID` env var |
 | **Emacs vterm** | New frame via `emacsclient` | `$INSIDE_EMACS` env var |
+| **Windows Terminal** | `wt.exe split-pane` (blocks via sentinel) | `$WT_SESSION` env var |
 
-Priority: tmux → Zellij → herdr → kitty → wezterm/Kaku → cmux → ghostty → iTerm2 → Emacs vterm (first detected wins). If none are available, the plugin exits with an error.
+Priority: tmux → Zellij → herdr → kitty → wezterm/Kaku → cmux → ghostty → iTerm2 → Emacs vterm → Windows Terminal (first detected wins). If none are available, the plugin exits with an error.
 
 > **Note:** cmux is detected before ghostty when `$CMUX_SURFACE_ID` is set, `__CFBundleIdentifier=com.cmuxterm.app`, or `GHOSTTY_RESOURCES_DIR` / `GHOSTTY_BIN_DIR` contains `cmux.app`. The cmux block uses the cmux CLI (`new-split` + `send --surface`) instead of Ghostty's AppleScript API.
 
 > **Note:** iTerm2 uses a split pane (vertical or horizontal, auto-detected from terminal dimensions) rather than a full-screen overlay. The iTerm2 AppleScript API does not expose a zoom command, so the split view shares screen space with the invoking session.
+
+> **Note:** Windows Terminal is detected via `$WT_SESSION` and opens a split pane in the current window with `wt.exe -w 0 split-pane`. The launcher is a bash script, so on Windows it runs under Git Bash (its `revdiff`, `bash`, and `wt.exe` must be reachable from the Git Bash `PATH`). Like iTerm2 it shares screen space rather than zooming to a full overlay.
 
 > **Note:** Ghostty and iTerm2 launchers use `osascript` (Apple Events), which is blocked by Claude Code's sandbox. If you use these terminals with sandbox enabled, add the launcher to `excludedCommands` in your Claude Code `settings.json`:
 >
@@ -108,7 +111,7 @@ Priority: tmux → Zellij → herdr → kitty → wezterm/Kaku → cmux → ghos
 > }
 > ```
 >
-> Terminals that use CLI tools instead of AppleScript (tmux, Zellij, herdr, kitty, wezterm, cmux) are not affected.
+> Terminals that use CLI tools instead of AppleScript (tmux, Zellij, herdr, kitty, wezterm, cmux, Windows Terminal) are not affected.
 
 **Install:**
 
