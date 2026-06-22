@@ -400,6 +400,16 @@ revdiff --dump-config > ~/.config/revdiff/config
 
 Then uncomment and edit the values you want to change.
 
+**On Windows:** the `~/.config/revdiff/` paths resolve under your home directory — config, `keybindings`, `themes\`, and `history\` all live in `C:\Users\<you>\.config\revdiff\` (revdiff uses the home dir, not `%APPDATA%`). The `bash` examples throughout this README work as-is in **Git Bash**. From PowerShell, write config files as **UTF-8 without a BOM** — revdiff rejects a byte-order mark with `unknown option` on the first line, and Windows PowerShell 5.1's `>` and `Out-File` add one:
+
+```powershell
+$cfg = "$HOME\.config\revdiff\config"
+New-Item -ItemType Directory -Force (Split-Path $cfg) | Out-Null
+[IO.File]::WriteAllText($cfg, (revdiff --dump-config | Out-String))
+```
+
+Use the same pattern for `--dump-keys` and `--dump-theme`.
+
 ### Themes
 
 revdiff ships with eight bundled color themes: **basic**, **catppuccin-latte**, **catppuccin-mocha**, **dracula**, **gruvbox**, **nord**, **revdiff**, and **solarized-dark**. Themes are stored in `~/.config/revdiff/themes/` and are automatically created on first run.

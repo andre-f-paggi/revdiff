@@ -392,6 +392,10 @@ revdiff --only=/tmp/draft-comment.md</code></div>
         <p>Precedence: CLI flags &gt; env vars &gt; config file &gt; built-in defaults. For annotation exit status, use <code>REVDIFF_EXIT_CODE_ON_ANNOTATIONS</code> or <code>exit-code-on-annotations = true</code>.</p>
         <div class="code-block"><code>mkdir -p ~/.config/revdiff
 revdiff --dump-config > ~/.config/revdiff/config</code></div>
+        <p><strong>On Windows:</strong> the <code>~/.config/revdiff/</code> paths resolve under your home directory &mdash; config, <code>keybindings</code>, <code>themes\</code>, and <code>history\</code> all live in <code>C:\Users\&lt;you&gt;\.config\revdiff\</code> (revdiff uses the home dir, not <code>%APPDATA%</code>). The <code>bash</code> examples above work as-is in <strong>Git Bash</strong>. From PowerShell, write config files as <strong>UTF-8 without a BOM</strong> &mdash; revdiff rejects a byte-order mark (<code>unknown option</code> on the first line), and Windows PowerShell 5.1's <code>&gt;</code> and <code>Out-File</code> add one:</p>
+        <div class="code-block"><code>$cfg = "$HOME\.config\revdiff\config"
+New-Item -ItemType Directory -Force (Split-Path $cfg) | Out-Null
+[IO.File]::WriteAllText($cfg, (revdiff --dump-config | Out-String))</code></div>
 
         <h2 id="options">Options</h2>
         <table>
