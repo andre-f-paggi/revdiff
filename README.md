@@ -73,7 +73,7 @@ sudo rpm -i revdiff_*.rpm
 
 **Windows:**
 
-Download `revdiff_*_windows_*.zip` for your architecture from [GitHub Releases](https://github.com/umputun/revdiff/releases), extract `revdiff.exe`, and add it to your `PATH`. For the Claude Code plugin on Windows, install **Git Bash** (bundled with [Git for Windows](https://git-scm.com/download/win)) and run inside **Windows Terminal** — the launcher runs under Git Bash and opens revdiff in a `wt.exe` split pane.
+Download `revdiff_*_windows_*.zip` for your architecture from [GitHub Releases](https://github.com/umputun/revdiff/releases), extract `revdiff.exe`, and add it to your `PATH`. For the Claude Code plugin on Windows, install **Git Bash** (bundled with [Git for Windows](https://git-scm.com/download/win)) and run inside **Windows Terminal** — the launcher runs under Git Bash and opens revdiff in a new `wt.exe` window.
 
 **Go (any platform):**
 
@@ -103,7 +103,7 @@ The plugin requires one of the following terminals since Claude Code itself cann
 | **ghostty** | AppleScript split + zoom (macOS only) | `$TERM_PROGRAM` + AppleScript probe |
 | **iTerm2** | `osascript` split pane (macOS only) | `$ITERM_SESSION_ID` env var |
 | **Emacs vterm** | New frame via `emacsclient` | `$INSIDE_EMACS` env var |
-| **Windows Terminal** | `wt.exe split-pane` (blocks via sentinel) | `$WT_SESSION` env var |
+| **Windows Terminal** | `wt.exe -w new` (own window, blocks via sentinel) | `$WT_SESSION` env var |
 
 Priority: tmux → Zellij → herdr → kitty → wezterm/Kaku → cmux → ghostty → iTerm2 → Emacs vterm → Windows Terminal (first detected wins). If none are available, the plugin exits with an error.
 
@@ -111,7 +111,7 @@ Priority: tmux → Zellij → herdr → kitty → wezterm/Kaku → cmux → ghos
 
 > **Note:** iTerm2 uses a split pane (vertical or horizontal, auto-detected from terminal dimensions) rather than a full-screen overlay. The iTerm2 AppleScript API does not expose a zoom command, so the split view shares screen space with the invoking session.
 
-> **Note:** Windows Terminal is detected via `$WT_SESSION` and opens a split pane in the current window with `wt.exe -w 0 split-pane`. The launcher is a bash script, so on Windows it runs under Git Bash (its `revdiff`, `bash`, and `wt.exe` must be reachable from the Git Bash `PATH`). Like iTerm2 it shares screen space rather than zooming to a full overlay.
+> **Note:** Windows Terminal is detected via `$WT_SESSION` and opens revdiff in its own window with `wt.exe -w new`, which closes when you quit (no split pane sharing the caller's window, and no leftover render artifacts). The launcher is a bash script, so on Windows it runs under Git Bash (its `revdiff`, `bash`, and `wt.exe` must be reachable from the Git Bash `PATH`).
 
 > **Note:** Ghostty and iTerm2 launchers use `osascript` (Apple Events), which is blocked by Claude Code's sandbox. If you use these terminals with sandbox enabled, add the launcher to `excludedCommands` in your Claude Code `settings.json`:
 >

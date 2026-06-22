@@ -123,7 +123,7 @@ case "$cmd_name" in
         ;;
     wt|wt.exe)
         # fake Windows Terminal: run the trailing launch script (the last arg,
-        # after `wt -w 0 split-pane --size <s> --title <t> <bash> <script>`)
+        # after `wt -w new new-tab --title <t> <bash> <script>`)
         last=""
         for last in "$@"; do :; done
         bash "$last"

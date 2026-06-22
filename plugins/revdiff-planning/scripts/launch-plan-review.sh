@@ -482,7 +482,7 @@ LAUNCHER
     exit "${rc:-1}"
 fi
 
-# windows terminal: split-pane via wt.exe (Git Bash), sentinel file for blocking.
+# windows terminal: new window via wt.exe (Git Bash), sentinel file for blocking.
 # wt.exe returns immediately, so the review tool's exit code rides the sentinel.
 WT_BIN=""
 if command -v wt.exe >/dev/null 2>&1; then
@@ -504,16 +504,6 @@ cd $(sq "$CWD") && $REVDIFF_CMD; rc=\$?; printf "%s" "\$rc" > $(sq "$SENTINEL").
 LAUNCHER
     chmod +x "$LAUNCH_SCRIPT"
 
-    # wt.exe --size takes a fraction (0-1), not a percentage; clamp to a sane split
-    WT_PCT="${REVDIFF_POPUP_HEIGHT:-90%}"
-    WT_PCT="${WT_PCT%%%}"
-    case "$WT_PCT" in
-        ''|*[!0-9]*) WT_PCT=90 ;;
-    esac
-    [ "$WT_PCT" -ge 100 ] && WT_PCT=95
-    [ "$WT_PCT" -lt 10 ] && WT_PCT=10
-    WT_SIZE="0.$WT_PCT"
-
     # hand wt.exe an absolute Windows path to bash (Git Bash's bin is rarely on
     # the Windows PATH); fall back to the bare name when cygpath is unavailable
     WT_BASH=bash
@@ -522,9 +512,11 @@ LAUNCHER
         [ -n "$_wt_bash" ] && WT_BASH=$(cygpath -w "$_wt_bash")
     fi
 
-    # -w 0 targets the current window; the launch script path stays POSIX so the
-    # spawned bash opens it correctly (wt.exe forwards the argument verbatim)
-    "$WT_BIN" -w 0 split-pane --size "$WT_SIZE" --title "$OVERLAY_TITLE" \
+    # -w new opens the review in its own window that closes cleanly on exit; a
+    # split pane in -w 0 shares the caller's window and leaves TUI render artifacts
+    # on close. the launch script path stays POSIX so the spawned bash opens it
+    # correctly (wt.exe forwards the argument verbatim)
+    "$WT_BIN" -w new new-tab --title "$OVERLAY_TITLE" \
         "$WT_BASH" "$LAUNCH_SCRIPT" >/dev/null 2>&1
 
     while [ ! -f "$SENTINEL" ]; do

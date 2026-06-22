@@ -4,7 +4,7 @@
 
 ### New Features
 
-- add Windows Terminal overlay backend for the Claude Code, Codex, and plan-review launchers (detected via `$WT_SESSION`, splits the current window with `wt.exe -w 0 split-pane`)
+- add Windows Terminal overlay backend for the Claude Code, Codex, and plan-review launchers (detected via `$WT_SESSION`, opens its own window with `wt.exe -w new` that closes cleanly on exit)
 
 ## v1.7.0 - 2026-06-14
 

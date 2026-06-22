@@ -5,7 +5,7 @@
 brew install umputun/apps/revdiff
 ```
 
-**Windows:** download `revdiff_*_windows_*.zip` from [GitHub Releases](https://github.com/umputun/revdiff/releases), extract `revdiff.exe`, and add it to your `PATH`. For the Claude Code plugin on Windows, install **Git Bash** (Git for Windows) and run inside **Windows Terminal** — the launcher runs under Git Bash and opens revdiff in a `wt.exe` split pane.
+**Windows:** download `revdiff_*_windows_*.zip` from [GitHub Releases](https://github.com/umputun/revdiff/releases), extract `revdiff.exe`, and add it to your `PATH`. For the Claude Code plugin on Windows, install **Git Bash** (Git for Windows) and run inside **Windows Terminal** — the launcher runs under Git Bash and opens revdiff in a new `wt.exe` window.
 
 **Go (any platform):**
 ```bash
