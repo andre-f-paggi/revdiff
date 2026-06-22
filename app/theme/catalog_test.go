@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -368,6 +369,9 @@ func Test_load_pathTraversal(t *testing.T) {
 }
 
 func Test_load_permissionError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("a 0o000 file remains readable on Windows; permission errors are POSIX-specific")
+	}
 	dir := t.TempDir()
 	fpath := filepath.Join(dir, "secret-theme")
 	require.NoError(t, os.WriteFile(fpath, []byte("chroma-style = dracula\n"), 0o000))

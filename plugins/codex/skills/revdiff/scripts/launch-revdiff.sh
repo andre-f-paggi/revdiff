@@ -565,9 +565,14 @@ LAUNCHER
     fi
 
     # -w 0 targets the current window; the launch script path stays POSIX so the
-    # spawned bash opens it correctly (wt.exe forwards the argument verbatim)
-    "$WT_BIN" -w 0 split-pane --size "$WT_SIZE" --title "$OVERLAY_TITLE" \
-        "$WT_BASH" "$LAUNCH_SCRIPT" >/dev/null 2>&1
+    # spawned bash opens it correctly (wt.exe forwards the argument verbatim).
+    # bail if wt.exe rejects the command — otherwise the sentinel never lands and
+    # the poll loop below would block forever.
+    if ! "$WT_BIN" -w 0 split-pane --size "$WT_SIZE" --title "$OVERLAY_TITLE" \
+        "$WT_BASH" "$LAUNCH_SCRIPT" >/dev/null 2>&1; then
+        echo "error: failed to open Windows Terminal split pane (wt.exe split-pane)" >&2
+        exit 1
+    fi
 
     while [ ! -f "$SENTINEL" ]; do
         sleep 0.3

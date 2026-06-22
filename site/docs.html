@@ -124,8 +124,13 @@
         <h3>RPM-based (Fedora, RHEL)</h3>
         <div class="code-block"><code>sudo rpm -i revdiff_*.rpm</code></div>
         <p>Download the latest <code>.rpm</code> for your architecture from <a href="https://github.com/umputun/revdiff/releases">GitHub Releases</a>.</p>
+        <h3>Windows</h3>
+        <p>Download <code>revdiff_*_windows_*.zip</code> for your architecture from <a href="https://github.com/umputun/revdiff/releases">GitHub Releases</a>, extract <code>revdiff.exe</code>, and add it to your <code>PATH</code>. For the Claude Code plugin on Windows, install Git Bash (Git for Windows) and run inside Windows Terminal &mdash; the launcher runs under Git Bash and opens revdiff in a <code>wt.exe</code> split pane.</p>
+        <h3>Go (any platform)</h3>
+        <div class="code-block"><code>go install -tags forceposix github.com/umputun/revdiff/app@latest</code></div>
+        <p>Installs as <code>app</code>/<code>app.exe</code> (named after the package dir) &mdash; rename to <code>revdiff</code> and put it on your <code>PATH</code>. The <code>forceposix</code> build tag keeps <code>-</code>/<code>--</code> flag parsing consistent and is required on Windows.</p>
         <h3>Binary releases</h3>
-        <p>Download from <a href="https://github.com/umputun/revdiff/releases">GitHub Releases</a> &mdash; deb, rpm, archives for linux/darwin amd64/arm64.</p>
+        <p>Download from <a href="https://github.com/umputun/revdiff/releases">GitHub Releases</a> &mdash; deb, rpm, archives for linux/darwin/windows amd64/arm64.</p>
 
         <h2 id="pi-package">Pi package</h2>
         <p>revdiff also ships as a <a href="https://github.com/badlogic/pi-mono">pi</a> package. The <code>/revdiff</code> command routes requests through the revdiff skill, which resolves refs, files, and natural-language targets before launching the existing <code>revdiff</code> binary through the <code>revdiff_review</code> tool. If no annotations were captured, the agent stops the review loop unless you explicitly ask for another review.</p>

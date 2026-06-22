@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -173,7 +172,7 @@ func TestReadFileAsContext_NonRegularFile(t *testing.T) {
 
 	t.Run("fifo returns placeholder", func(t *testing.T) {
 		fifoPath := filepath.Join(dir, "test.fifo")
-		require.NoError(t, syscall.Mkfifo(fifoPath, 0o600))
+		mkfifo(t, fifoPath)
 
 		lines, err := readFileAsContext(fifoPath)
 		require.NoError(t, err)
@@ -194,9 +193,9 @@ func TestReadFileAsContext_NonRegularFile(t *testing.T) {
 
 	t.Run("symlink to fifo returns placeholder", func(t *testing.T) {
 		fifoPath := filepath.Join(dir, "target.fifo")
-		require.NoError(t, syscall.Mkfifo(fifoPath, 0o600))
+		mkfifo(t, fifoPath)
 		linkPath := filepath.Join(dir, "link-to-fifo")
-		require.NoError(t, os.Symlink(fifoPath, linkPath))
+		symlink(t, fifoPath, linkPath)
 
 		lines, err := readFileAsContext(linkPath)
 		require.NoError(t, err)
@@ -206,7 +205,7 @@ func TestReadFileAsContext_NonRegularFile(t *testing.T) {
 
 	t.Run("broken symlink returns placeholder", func(t *testing.T) {
 		linkPath := filepath.Join(dir, "broken-link")
-		require.NoError(t, os.Symlink("/nonexistent/target", linkPath))
+		symlink(t, "/nonexistent/target", linkPath)
 
 		lines, err := readFileAsContext(linkPath)
 		require.NoError(t, err)
@@ -221,7 +220,7 @@ func TestReadFileAsContext_NonRegularFile(t *testing.T) {
 		realFile := filepath.Join(dir, "real.txt")
 		require.NoError(t, os.WriteFile(realFile, []byte("hello\n"), 0o600))
 		linkPath := filepath.Join(dir, "link-to-real")
-		require.NoError(t, os.Symlink(realFile, linkPath))
+		symlink(t, realFile, linkPath)
 
 		lines, err := readFileAsContext(linkPath)
 		require.NoError(t, err)
@@ -807,7 +806,7 @@ func TestReadFileAsAdded_BrokenSymlink(t *testing.T) {
 	target := filepath.Join(dir, "target.txt")
 	require.NoError(t, os.WriteFile(target, []byte("content"), 0o600))
 	link := filepath.Join(dir, "link.txt")
-	require.NoError(t, os.Symlink(target, link))
+	symlink(t, target, link)
 	require.NoError(t, os.Remove(target))
 
 	lines, err := ReadFileAsAdded(link)

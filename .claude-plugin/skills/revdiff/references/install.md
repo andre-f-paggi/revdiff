@@ -5,7 +5,15 @@
 brew install umputun/apps/revdiff
 ```
 
-**Binary releases:** download from [GitHub Releases](https://github.com/umputun/revdiff/releases) (deb, rpm, archives for linux/darwin amd64/arm64).
+**Windows:** download `revdiff_*_windows_*.zip` from [GitHub Releases](https://github.com/umputun/revdiff/releases), extract `revdiff.exe`, and add it to your `PATH`. For the Claude Code plugin on Windows, install **Git Bash** (Git for Windows) and run inside **Windows Terminal** — the launcher runs under Git Bash and opens revdiff in a `wt.exe` split pane.
+
+**Go (any platform):**
+```bash
+go install -tags forceposix github.com/umputun/revdiff/app@latest
+```
+Installs as `app`/`app.exe` (named after the package dir) — rename to `revdiff` and put it on your `PATH`. `forceposix` keeps `-`/`--` flag parsing consistent and is required on Windows.
+
+**Binary releases:** download from [GitHub Releases](https://github.com/umputun/revdiff/releases) (deb, rpm, archives for linux/darwin/windows amd64/arm64).
 
 ## Claude Code Plugin
 

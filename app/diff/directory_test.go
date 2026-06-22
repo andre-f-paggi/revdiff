@@ -115,7 +115,7 @@ func TestDirectoryReader_ChangedFiles_brokenSymlink(t *testing.T) {
 
 	// create a regular file and a symlink pointing to a nonexistent target
 	writeFile(t, dir, "real.go", "package main\n")
-	require.NoError(t, os.Symlink("/nonexistent/target", filepath.Join(dir, "broken.link")))
+	symlink(t, "/nonexistent/target", filepath.Join(dir, "broken.link"))
 	gitCmd(t, dir, "add", ".")
 	gitCmd(t, dir, "commit", "-m", "initial")
 
@@ -131,7 +131,7 @@ func TestDirectoryReader_FileDiff_brokenSymlink(t *testing.T) {
 
 	// create a regular file and a broken symlink, commit both
 	writeFile(t, dir, "real.go", "package main\n")
-	require.NoError(t, os.Symlink("/nonexistent/target", filepath.Join(dir, "broken.link")))
+	symlink(t, "/nonexistent/target", filepath.Join(dir, "broken.link"))
 	gitCmd(t, dir, "add", ".")
 	gitCmd(t, dir, "commit", "-m", "initial")
 

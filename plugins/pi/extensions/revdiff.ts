@@ -474,30 +474,38 @@ function shellQuote(arg: string): string {
 	return `'${arg.replace(/'/g, `'\\''`)}'`;
 }
 
+// candidate executable names, most specific first. Windows ships revdiff.exe,
+// so PATH and .bin lookups must try the .exe suffix before the bare name.
+const REVDIFF_BIN_NAMES = process.platform === "win32" ? ["revdiff.exe", "revdiff"] : ["revdiff"];
+
 function resolveRevdiffBin(): string | undefined {
 	const fromEnv = process.env.REVDIFF_BIN;
 	if (fromEnv && existsSync(fromEnv)) {
 		return fromEnv;
 	}
-	const fromPath = findInPath("revdiff");
+	const fromPath = findInPath();
 	if (fromPath) {
 		return fromPath;
 	}
-	const local = path.join(REPO_ROOT, ".bin", "revdiff");
-	if (existsSync(local)) {
-		return local;
+	for (const name of REVDIFF_BIN_NAMES) {
+		const local = path.join(REPO_ROOT, ".bin", name);
+		if (existsSync(local)) {
+			return local;
+		}
 	}
 	return undefined;
 }
 
-function findInPath(binary: string): string | undefined {
+function findInPath(): string | undefined {
 	for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
 		if (!dir) {
 			continue;
 		}
-		const candidate = path.join(dir, binary);
-		if (existsSync(candidate)) {
-			return candidate;
+		for (const name of REVDIFF_BIN_NAMES) {
+			const candidate = path.join(dir, name);
+			if (existsSync(candidate)) {
+				return candidate;
+			}
 		}
 	}
 	return undefined;

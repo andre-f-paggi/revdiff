@@ -156,6 +156,9 @@ func TestCountFileLines_MissingFile(t *testing.T) {
 // (e.g. ISO timestamps) round-trip cleanly under the two-flag form. The OG
 // --compare=old:new bug is killed by the flag shape change; this test pins it.
 func TestCompareReader_FileDiff_PathsWithColons(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("':' is reserved in Windows filenames")
+	}
 	dir := t.TempDir()
 	oldPath := filepath.Join(dir, "2026-05-01T12:30:00.md")
 	newPath := filepath.Join(dir, "2026-05-01T13:00:00.md")
@@ -273,8 +276,8 @@ func TestCompareReader_FileDiff_Symlinks(t *testing.T) {
 
 	linkOld := filepath.Join(dir, "link-old.txt")
 	linkNew := filepath.Join(dir, "link-new.txt")
-	require.NoError(t, os.Symlink(realOld, linkOld))
-	require.NoError(t, os.Symlink(realNew, linkNew))
+	symlink(t, realOld, linkOld)
+	symlink(t, realNew, linkNew)
 
 	countAddRemove := func(t *testing.T, lines []DiffLine) (adds, removes int) {
 		t.Helper()

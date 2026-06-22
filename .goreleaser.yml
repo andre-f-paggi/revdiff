@@ -9,9 +9,14 @@ builds:
     goos:
       - linux
       - darwin
+      - windows
     goarch:
       - amd64
       - arm64
+    # forceposix makes go-flags parse -/-- options identically on every
+    # platform; without it, Windows treats /path arguments as /options.
+    tags:
+      - forceposix
     ldflags:
       - -s -w -X main.revision={{.Tag}}-{{.ShortCommit}}-{{ trimsuffix (replace (replace .CommitDate "-" "") ":" "") "Z" }}
 
@@ -21,6 +26,9 @@ archives:
       - revdiff
     name_template: >-
       {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
     files:
       - completions/*
 

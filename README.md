@@ -71,7 +71,19 @@ sudo dpkg -i revdiff_*.deb
 sudo rpm -i revdiff_*.rpm
 ```
 
-**Binary releases:** download from [GitHub Releases](https://github.com/umputun/revdiff/releases) (deb, rpm, archives for linux/darwin amd64/arm64).
+**Windows:**
+
+Download `revdiff_*_windows_*.zip` for your architecture from [GitHub Releases](https://github.com/umputun/revdiff/releases), extract `revdiff.exe`, and add it to your `PATH`. For the Claude Code plugin on Windows, install **Git Bash** (bundled with [Git for Windows](https://git-scm.com/download/win)) and run inside **Windows Terminal** — the launcher runs under Git Bash and opens revdiff in a `wt.exe` split pane.
+
+**Go (any platform):**
+
+```bash
+go install -tags forceposix github.com/umputun/revdiff/app@latest
+```
+
+The binary is named `app`/`app.exe` after its package directory — rename it to `revdiff` and put it on your `PATH`. The `forceposix` build tag keeps `-`/`--` flag parsing consistent on every platform; it is required on Windows (without it, arguments like `/c/path` are parsed as options) and harmless elsewhere.
+
+**Binary releases:** download from [GitHub Releases](https://github.com/umputun/revdiff/releases) (deb, rpm, archives for linux/darwin/windows amd64/arm64).
 
 ## Claude Code Plugin
 

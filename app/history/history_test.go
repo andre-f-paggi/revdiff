@@ -137,14 +137,14 @@ func TestHistoryDir_CustomDir(t *testing.T) {
 	svc := New("/tmp/hist")
 	p := Params{Path: "/Users/joe/myrepo"}
 	got := svc.historyDir(p)
-	assert.Equal(t, "/tmp/hist/myrepo", got)
+	assert.Equal(t, filepath.FromSlash("/tmp/hist/myrepo"), got)
 }
 
 func TestHistoryDir_StdinPath(t *testing.T) {
 	svc := New("/tmp/hist")
 	p := Params{Path: "stdin"}
 	got := svc.historyDir(p)
-	assert.Equal(t, "/tmp/hist/stdin", got)
+	assert.Equal(t, filepath.FromSlash("/tmp/hist/stdin"), got)
 }
 
 func TestHistoryDir_SubDirOverride(t *testing.T) {
@@ -152,7 +152,7 @@ func TestHistoryDir_SubDirOverride(t *testing.T) {
 	svc := New("/tmp/hist")
 	p := Params{Path: "/tmp/note.md", SubDir: "tmp"}
 	got := svc.historyDir(p)
-	assert.Equal(t, "/tmp/hist/tmp", got)
+	assert.Equal(t, filepath.FromSlash("/tmp/hist/tmp"), got)
 }
 
 func TestHistoryDir_SubDirTakesPrecedence(t *testing.T) {
@@ -160,14 +160,14 @@ func TestHistoryDir_SubDirTakesPrecedence(t *testing.T) {
 	svc := New("/tmp/hist")
 	p := Params{Path: "/home/user/docs/readme.md", SubDir: "docs"}
 	got := svc.historyDir(p)
-	assert.Equal(t, "/tmp/hist/docs", got)
+	assert.Equal(t, filepath.FromSlash("/tmp/hist/docs"), got)
 }
 
 func TestHistoryDir_EmptyPath(t *testing.T) {
 	svc := New("/tmp/hist")
 	p := Params{Path: ""}
 	got := svc.historyDir(p)
-	assert.Equal(t, "/tmp/hist/unknown", got)
+	assert.Equal(t, filepath.FromSlash("/tmp/hist/unknown"), got)
 }
 
 func TestSave_NonGitSingleFile(t *testing.T) {
@@ -332,25 +332,29 @@ func TestGitCommitHash_ValidRepo(t *testing.T) {
 
 func TestFilterRepoFiles(t *testing.T) {
 	svc := New("")
+	// real, platform-absolute roots so the test exercises the same path
+	// semantics on Windows (drive-rooted) as on POSIX; filterRepoFiles does no
+	// I/O, so the dirs need not contain the files.
+	root := t.TempDir()
+	outside := t.TempDir()
 	tests := []struct {
 		name     string
-		gitRoot  string
 		files    []string
 		expected []string
 	}{
-		{name: "relative files inside repo", gitRoot: "/repo", files: []string{"main.go", "pkg/util.go"}, expected: []string{"main.go", "pkg/util.go"}},
-		{name: "absolute path outside repo", gitRoot: "/repo", files: []string{"main.go", "/tmp/note.md"}, expected: []string{"main.go"}},
-		{name: "all outside repo", gitRoot: "/repo", files: []string{"/tmp/a.md", "/other/b.md"}, expected: []string{}},
-		{name: "absolute path inside repo", gitRoot: "/repo", files: []string{"/repo/main.go"}, expected: []string{"main.go"}},
-		{name: "absolute path nested", gitRoot: "/repo", files: []string{"/repo/pkg/util.go"}, expected: []string{"pkg/util.go"}},
-		{name: "dotdot resolves inside repo", gitRoot: "/repo", files: []string{"sub/../main.go"}, expected: []string{"main.go"}},
-		{name: "empty list", gitRoot: "/repo", files: []string{}, expected: []string{}},
-		{name: "dotdot path outside", gitRoot: "/repo", files: []string{"../outside.go"}, expected: []string{}},
-		{name: "dotdot-prefixed filename inside repo", gitRoot: "/repo", files: []string{"/repo/..foo"}, expected: []string{"..foo"}},
+		{name: "relative files inside repo", files: []string{"main.go", "pkg/util.go"}, expected: []string{"main.go", "pkg/util.go"}},
+		{name: "absolute path outside repo", files: []string{"main.go", filepath.Join(outside, "note.md")}, expected: []string{"main.go"}},
+		{name: "all outside repo", files: []string{filepath.Join(outside, "a.md"), filepath.Join(outside, "b.md")}, expected: []string{}},
+		{name: "absolute path inside repo", files: []string{filepath.Join(root, "main.go")}, expected: []string{"main.go"}},
+		{name: "absolute path nested", files: []string{filepath.Join(root, "pkg", "util.go")}, expected: []string{"pkg/util.go"}},
+		{name: "dotdot resolves inside repo", files: []string{filepath.FromSlash("sub/../main.go")}, expected: []string{"main.go"}},
+		{name: "empty list", files: []string{}, expected: []string{}},
+		{name: "dotdot path outside", files: []string{filepath.FromSlash("../outside.go")}, expected: []string{}},
+		{name: "dotdot-prefixed filename inside repo", files: []string{filepath.Join(root, "..foo")}, expected: []string{"..foo"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := svc.filterRepoFiles(tt.gitRoot, tt.files)
+			got := svc.filterRepoFiles(root, tt.files)
 			if len(tt.expected) == 0 {
 				assert.Empty(t, got)
 			} else {
