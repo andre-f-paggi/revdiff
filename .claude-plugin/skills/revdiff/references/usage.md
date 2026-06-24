@@ -149,6 +149,8 @@ Examples piping a real diff:
 | `@` | Toggle annotation list popup (navigate and jump to any annotation) |
 | `}` / `{` | Jump to next/previous annotation (always crosses file boundaries; silent no-op at the first/last annotation) |
 | `d` | Delete annotation under cursor |
+| `s` | Suggest a literal edit for the current line (`suggest_edit` — rebindable) |
+| `x` | Discard the suggested edit under cursor, rolling back to original (`discard_suggestion` — rebindable) |
 | `Ctrl+E` (during annotation input) | Open `$EDITOR` for multi-line annotation (`open_editor` — rebindable) |
 | `Esc` | Cancel annotation input |
 
@@ -292,6 +294,18 @@ Each annotation block: `## filename:line[-end] (type)` where type is `(+)` added
 When annotation text contains the keyword "hunk" (case-insensitive, whole word), the output header automatically expands to include the full hunk line range (e.g., `handler.go:43-67 (+)` instead of `handler.go:43 (+)`). This gives AI consumers the range context without any extra steps.
 
 Comment body lines starting with `## ` (the record-header form) are prefixed with a single space on output so parsers that split on `## ` record headers cannot confuse a multi-line comment for a new record.
+
+A suggested edit (made with `s`) is emitted as a fenced ` ```suggestion ` block after the comment, carrying the literal replacement for that line:
+
+```
+## store.go:18 (-)
+use the options form here
+```suggestion
+newFunc(x, opts)
+```
+```
+
+The comment is optional. Apply the block's content verbatim at the indicated line in place of re-deriving the change from prose. The fence widens past any backtick run in the replacement so suggested edits to fenced markdown or code round-trip without escaping.
 
 Use `--output` / `-o` flag to write annotations to a file instead of stdout.
 

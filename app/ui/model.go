@@ -67,6 +67,8 @@ type styleResolver interface {
 	LineStyle(change diff.ChangeType, highlighted bool) lipgloss.Style
 	WordDiffBg(change diff.ChangeType) style.Color
 	IndicatorBg(change diff.ChangeType) style.Color
+	SuggestionBg() style.Color
+	SuggestionFg() style.Color
 }
 
 // styleRenderer is what Model needs for compound ANSI rendering operations.
@@ -443,6 +445,7 @@ type vimState struct {
 type annotationState struct {
 	annotating         bool            // true when annotation text input is active
 	fileAnnotating     bool            // true when annotating at file level (Line=0)
+	suggesting         bool            // true when the active input edits a suggested replacement (not a comment)
 	cursorOnAnnotation bool            // true when cursor is on the annotation sub-line (not the diff line)
 	input              textinput.Model // text input for annotations
 	// existingMultiline holds the original multi-line comment of an annotation
@@ -459,6 +462,10 @@ type annotationState struct {
 	// rows change). width changes self-invalidate via the cache key.
 	// NewModel initializes this map; direct Model{} construction is unsupported.
 	rowCache map[annotCacheKey][]string
+	// previewCache memoizes suggested-edit preview rows keyed by (replacement,
+	// width). Invalidated alongside rowCache (same callers) since preview rows
+	// bake in the resolver's suggestion colors; width self-invalidates via the key.
+	previewCache map[previewCacheKey][]string
 }
 
 // Model is the top-level bubbletea model for revdiff.
@@ -784,7 +791,7 @@ func NewModel(cfg ModelConfig) (Model, error) {
 		},
 		reload:          reloadState{applicable: cfg.ReloadApplicable},
 		compact:         compactState{applicable: cfg.CompactApplicable},
-		annot:           annotationState{rowCache: make(map[annotCacheKey][]string)},
+		annot:           annotationState{rowCache: make(map[annotCacheKey][]string), previewCache: make(map[previewCacheKey][]string)},
 		loadUntracked:   cfg.LoadUntracked,
 		activeThemeName: cfg.ActiveThemeName,
 	}, nil
