@@ -124,8 +124,13 @@
         <h3>RPM-based (Fedora, RHEL)</h3>
         <div class="code-block"><code>sudo rpm -i revdiff_*.rpm</code></div>
         <p>Download the latest <code>.rpm</code> for your architecture from <a href="https://github.com/umputun/revdiff/releases">GitHub Releases</a>.</p>
+        <h3>Windows</h3>
+        <p>Download <code>revdiff_*_windows_*.zip</code> for your architecture from <a href="https://github.com/umputun/revdiff/releases">GitHub Releases</a>, extract <code>revdiff.exe</code>, and add it to your <code>PATH</code>. For the Claude Code plugin on Windows, install Git Bash (Git for Windows) and run inside Windows Terminal &mdash; the launcher runs under Git Bash and opens revdiff in a new <code>wt.exe</code> window.</p>
+        <h3>Go (any platform)</h3>
+        <div class="code-block"><code>go install -tags forceposix github.com/umputun/revdiff/app@latest</code></div>
+        <p>Installs as <code>app</code>/<code>app.exe</code> (named after the package dir) &mdash; rename to <code>revdiff</code> and put it on your <code>PATH</code>. The <code>forceposix</code> build tag keeps <code>-</code>/<code>--</code> flag parsing consistent and is required on Windows.</p>
         <h3>Binary releases</h3>
-        <p>Download from <a href="https://github.com/umputun/revdiff/releases">GitHub Releases</a> &mdash; deb, rpm, archives for linux/darwin amd64/arm64.</p>
+        <p>Download from <a href="https://github.com/umputun/revdiff/releases">GitHub Releases</a> &mdash; deb, rpm, archives for linux/darwin/windows amd64/arm64.</p>
 
         <h2 id="pi-package">Pi package</h2>
         <p>revdiff also ships as a <a href="https://github.com/badlogic/pi-mono">pi</a> package. The <code>/revdiff</code> command routes requests through the revdiff skill, which resolves refs, files, and natural-language targets before launching the existing <code>revdiff</code> binary through the <code>revdiff_review</code> tool. If no annotations were captured, the agent stops the review loop unless you explicitly ask for another review.</p>
@@ -387,6 +392,10 @@ revdiff --only=/tmp/draft-comment.md</code></div>
         <p>Precedence: CLI flags &gt; env vars &gt; config file &gt; built-in defaults. For annotation exit status, use <code>REVDIFF_EXIT_CODE_ON_ANNOTATIONS</code> or <code>exit-code-on-annotations = true</code>.</p>
         <div class="code-block"><code>mkdir -p ~/.config/revdiff
 revdiff --dump-config > ~/.config/revdiff/config</code></div>
+        <p><strong>On Windows:</strong> the <code>~/.config/revdiff/</code> paths resolve under your home directory &mdash; config, <code>keybindings</code>, <code>themes\</code>, and <code>history\</code> all live in <code>C:\Users\&lt;you&gt;\.config\revdiff\</code> (revdiff uses the home dir, not <code>%APPDATA%</code>). The <code>bash</code> examples above work as-is in <strong>Git Bash</strong>. From PowerShell, write config files as <strong>UTF-8 without a BOM</strong> &mdash; revdiff rejects a byte-order mark (<code>unknown option</code> on the first line), and Windows PowerShell 5.1's <code>&gt;</code> and <code>Out-File</code> add one:</p>
+        <div class="code-block"><code>$cfg = "$HOME\.config\revdiff\config"
+New-Item -ItemType Directory -Force (Split-Path $cfg) | Out-Null
+[IO.File]::WriteAllText($cfg, (revdiff --dump-config | Out-String))</code></div>
 
         <h2 id="options">Options</h2>
         <table>
@@ -681,12 +690,13 @@ map alt+t&gt;n theme_select</code></div>
                 <tr><td><strong>ghostty</strong></td><td>AppleScript split + zoom (macOS only)</td><td><code>$TERM_PROGRAM</code> + AppleScript probe</td></tr>
                 <tr><td><strong>iTerm2</strong></td><td>AppleScript split pane (macOS only)</td><td><code>$ITERM_SESSION_ID</code></td></tr>
                 <tr><td><strong>Emacs vterm</strong></td><td>New frame via <code>emacsclient</code></td><td><code>$INSIDE_EMACS</code></td></tr>
+                <tr><td><strong>Windows Terminal</strong></td><td><code>wt.exe -w new</code> (own window, Git Bash, blocks via sentinel)</td><td><code>$WT_SESSION</code></td></tr>
             </tbody>
         </table>
-        <p>Priority: tmux &rarr; zellij &rarr; herdr &rarr; kitty &rarr; wezterm/kaku &rarr; cmux &rarr; ghostty &rarr; iTerm2 &rarr; Emacs vterm (first detected wins). cmux is checked before ghostty when <code>$CMUX_SURFACE_ID</code> is set, <code>__CFBundleIdentifier=com.cmuxterm.app</code>, or <code>GHOSTTY_RESOURCES_DIR</code> / <code>GHOSTTY_BIN_DIR</code> contains <code>cmux.app</code>. iTerm2 uses a split pane rather than a full-screen overlay.</p>
+        <p>Priority: tmux &rarr; zellij &rarr; herdr &rarr; kitty &rarr; wezterm/kaku &rarr; cmux &rarr; ghostty &rarr; iTerm2 &rarr; Emacs vterm &rarr; Windows Terminal (first detected wins). cmux is checked before ghostty when <code>$CMUX_SURFACE_ID</code> is set, <code>__CFBundleIdentifier=com.cmuxterm.app</code>, or <code>GHOSTTY_RESOURCES_DIR</code> / <code>GHOSTTY_BIN_DIR</code> contains <code>cmux.app</code>. iTerm2 uses a split pane rather than a full-screen overlay. Windows Terminal is detected via <code>$WT_SESSION</code> and opens its own window with <code>wt.exe -w new</code> that closes cleanly on exit; on Windows the bash launcher runs under Git Bash.</p>
         <p><strong>Sandbox note:</strong> Ghostty and iTerm2 launchers use <code>osascript</code> (Apple Events), which is blocked by Claude Code's sandbox. If you use these terminals with sandbox enabled, add the launcher to <code>excludedCommands</code> in your Claude Code <code>settings.json</code>:</p>
         <div class="code-block"><code>{ "permissions": { "excludedCommands": ["*/launch-revdiff.sh*"] } }</code></div>
-        <p>Terminals that use CLI tools instead of AppleScript (tmux, Zellij, herdr, kitty, wezterm, cmux) are not affected.</p>
+        <p>Terminals that use CLI tools instead of AppleScript (tmux, Zellij, herdr, kitty, wezterm, cmux, Windows Terminal) are not affected.</p>
 
         <h2 id="plugin-usage">Plugin usage</h2>
         <h3>Slash commands</h3>

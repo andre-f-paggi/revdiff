@@ -3,6 +3,7 @@ package fsutil
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,6 +78,9 @@ func TestAtomicWriteFile(t *testing.T) {
 	})
 
 	t.Run("fails when directory becomes read-only before write", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("the read-only directory attribute does not block file creation on Windows")
+		}
 		dir := t.TempDir()
 		sub := filepath.Join(dir, "ro")
 		require.NoError(t, os.Mkdir(sub, 0o750))

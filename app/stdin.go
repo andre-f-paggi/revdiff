@@ -79,14 +79,6 @@ func stdinName(name string) string {
 	return name
 }
 
-func openTTY() (*os.File, error) {
-	tty, err := os.Open("/dev/tty")
-	if err != nil {
-		return nil, fmt.Errorf("open /dev/tty: %w", err)
-	}
-	return tty, nil
-}
-
 // readStdinCapped reads up to maxStdinSize bytes from r and returns the
 // content as a string. Reads one byte past the cap so callers can detect
 // overflow without relying on possibly-stale stream length.

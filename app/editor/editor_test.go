@@ -152,8 +152,12 @@ func TestEditor_writeTempFile_UniquePaths(t *testing.T) {
 }
 
 func TestEditor_writeTempFile_CreateFailure(t *testing.T) {
-	// point TMPDIR at a path that cannot exist so CreateTemp fails.
-	t.Setenv("TMPDIR", filepath.Join(t.TempDir(), "nonexistent", "subdir"))
+	// point the temp dir at a path that cannot exist so CreateTemp fails.
+	// os.TempDir reads TMPDIR on POSIX and TMP/TEMP on Windows.
+	missing := filepath.Join(t.TempDir(), "nonexistent", "subdir")
+	t.Setenv("TMPDIR", missing)
+	t.Setenv("TMP", missing)
+	t.Setenv("TEMP", missing)
 
 	path, err := Editor{}.writeTempFile("content")
 	require.Error(t, err, "CreateTemp must fail when TMPDIR points to a missing parent")
@@ -163,7 +167,11 @@ func TestEditor_writeTempFile_CreateFailure(t *testing.T) {
 
 func TestEditor_Command_TempFileCreateFailurePropagates(t *testing.T) {
 	// Command delegates to writeTempFile; verify the error path is surfaced rather than swallowed.
-	t.Setenv("TMPDIR", filepath.Join(t.TempDir(), "nonexistent", "subdir"))
+	// os.TempDir reads TMPDIR on POSIX and TMP/TEMP on Windows.
+	missing := filepath.Join(t.TempDir(), "nonexistent", "subdir")
+	t.Setenv("TMPDIR", missing)
+	t.Setenv("TMP", missing)
+	t.Setenv("TEMP", missing)
 	t.Setenv("EDITOR", "/bin/true")
 
 	cmd, complete, err := Editor{}.Command("seed")

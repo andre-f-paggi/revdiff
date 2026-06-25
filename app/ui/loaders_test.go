@@ -2,6 +2,7 @@ package ui
 
 import (
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -265,16 +266,16 @@ func TestModel_FilterOnly(t *testing.T) {
 
 	t.Run("absolute path pattern resolved against workDir", func(t *testing.T) {
 		m := testModel(nil, nil)
-		m.cfg.only = []string{"/repo/README.md"}
-		m.cfg.workDir = "/repo"
+		m.cfg.workDir = t.TempDir()
+		m.cfg.only = []string{filepath.Join(m.cfg.workDir, "README.md")}
 		files := toEntries("ui/model.go", "README.md")
 		assert.Equal(t, []string{"README.md"}, diff.FileEntryPaths(m.filterOnly(files)))
 	})
 
 	t.Run("absolute path pattern with subdirectory", func(t *testing.T) {
 		m := testModel(nil, nil)
-		m.cfg.only = []string{"/repo/ui/model.go"}
-		m.cfg.workDir = "/repo"
+		m.cfg.workDir = t.TempDir()
+		m.cfg.only = []string{filepath.Join(m.cfg.workDir, "ui", "model.go")}
 		files := toEntries("ui/model.go", "diff/diff.go", "README.md")
 		assert.Equal(t, []string{"ui/model.go"}, diff.FileEntryPaths(m.filterOnly(files)))
 	})
@@ -289,8 +290,8 @@ func TestModel_FilterOnly(t *testing.T) {
 
 	t.Run("absolute path suffix match via resolved relative", func(t *testing.T) {
 		m := testModel(nil, nil)
-		m.cfg.only = []string{"/repo/model.go"}
-		m.cfg.workDir = "/repo"
+		m.cfg.workDir = t.TempDir()
+		m.cfg.only = []string{filepath.Join(m.cfg.workDir, "model.go")}
 		files := toEntries("ui/model.go", "diff/diff.go")
 		assert.Equal(t, []string{"ui/model.go"}, diff.FileEntryPaths(m.filterOnly(files)))
 	})
@@ -312,10 +313,11 @@ func TestModel_FilterOnly(t *testing.T) {
 
 	t.Run("dot-slash prefix matches absolute entry", func(t *testing.T) {
 		m := testModel(nil, nil)
+		m.cfg.workDir = t.TempDir()
 		m.cfg.only = []string{"./CLAUDE.md"}
-		m.cfg.workDir = "/repo"
-		files := toEntries("/repo/CLAUDE.md", "/repo/ui/model.go")
-		assert.Equal(t, []string{"/repo/CLAUDE.md"}, diff.FileEntryPaths(m.filterOnly(files)))
+		entry := filepath.Join(m.cfg.workDir, "CLAUDE.md")
+		files := toEntries(entry, filepath.Join(m.cfg.workDir, "ui", "model.go"))
+		assert.Equal(t, []string{entry}, diff.FileEntryPaths(m.filterOnly(files)))
 	})
 
 	t.Run("dot-slash prefix with subdirectory", func(t *testing.T) {

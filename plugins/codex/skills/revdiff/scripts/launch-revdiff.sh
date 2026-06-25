@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# launch revdiff in a terminal overlay (tmux/zellij/herdr/kitty/wezterm/cmux/ghostty/iterm2) and capture annotations.
+# launch revdiff in a terminal overlay (tmux/zellij/herdr/kitty/wezterm/cmux/ghostty/iterm2/windows-terminal) and capture annotations.
 # source: .claude-plugin/skills/revdiff/scripts/launch-revdiff.sh (keep in sync)
 # usage: launch-revdiff.sh [ref] [--staged] [--untracked] [--only=file1 ...]
 # output: annotation text from revdiff stdout (empty if no annotations)
@@ -523,5 +523,56 @@ LAUNCHER
     print_output_and_exit "${rc:-1}"
 fi
 
-echo "error: no overlay terminal available (requires tmux, zellij, herdr, kitty, wezterm, cmux, ghostty, iTerm2, or emacs vterm)" >&2
+# windows terminal: new window via wt.exe (Git Bash), sentinel file for blocking.
+# wt.exe returns immediately, so revdiff's exit code rides back on the sentinel.
+WT_BIN=""
+if command -v wt.exe >/dev/null 2>&1; then
+    WT_BIN=wt.exe
+elif command -v wt >/dev/null 2>&1; then
+    WT_BIN=wt
+fi
+if [ -n "${WT_SESSION:-}" ] && [ -n "$WT_BIN" ]; then
+    SENTINEL=$(mktemp "$TMPBASE/revdiff-done-XXXXXX")
+    rm -f "$SENTINEL"
+
+    LAUNCH_SCRIPT=$(mktemp "$TMPBASE/revdiff-launch-XXXXXX")
+    trap 'rm -f "$OUTPUT_FILE" "$SENTINEL" "$SENTINEL.tmp" "$LAUNCH_SCRIPT"' EXIT
+    # cd inside the script: wt.exe has no POSIX-path startingDirectory we can
+    # rely on from Git Bash, so the script localizes the working directory
+    cat > "$LAUNCH_SCRIPT" <<LAUNCHER
+#!/bin/sh
+cd $(sq "$CWD") && $(write_rc_cmd "$SENTINEL")
+LAUNCHER
+    chmod +x "$LAUNCH_SCRIPT"
+
+    # wt.exe resolves the tab program against the Windows PATH, where Git Bash's
+    # bash.exe usually is not; hand it the absolute Windows path when cygpath is
+    # present, falling back to the bare name (the overlay-test fakes use a Linux bash)
+    WT_BASH=bash
+    if command -v cygpath >/dev/null 2>&1; then
+        _wt_bash=$(command -v bash 2>/dev/null || true)
+        [ -n "$_wt_bash" ] && WT_BASH=$(cygpath -w "$_wt_bash")
+    fi
+
+    # -w new opens revdiff in its own window that closes cleanly on exit; a split
+    # pane in -w 0 shares the caller's window and leaves TUI render artifacts on
+    # close. the launch script path stays POSIX so the spawned bash opens it
+    # correctly (wt.exe forwards the argument verbatim). bail if wt.exe rejects the
+    # command — otherwise the sentinel never lands and the poll loop below would
+    # block forever.
+    if ! "$WT_BIN" -w new new-tab --title "$OVERLAY_TITLE" \
+        "$WT_BASH" "$LAUNCH_SCRIPT" >/dev/null 2>&1; then
+        echo "error: failed to open Windows Terminal window (wt.exe new-tab)" >&2
+        exit 1
+    fi
+
+    while [ ! -f "$SENTINEL" ]; do
+        sleep 0.3
+    done
+    rc=$(read_rc "$SENTINEL")
+    rm -f "$SENTINEL" "$LAUNCH_SCRIPT"
+    print_output_and_exit "${rc:-1}"
+fi
+
+echo "error: no overlay terminal available (requires tmux, zellij, herdr, kitty, wezterm, cmux, ghostty, iTerm2, emacs vterm, or windows terminal)" >&2
 exit 1

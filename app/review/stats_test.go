@@ -4,8 +4,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
-	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -59,7 +57,7 @@ func TestSafeWorkDirPath_SymlinkEscapeRejected(t *testing.T) {
 	outside := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(outside, "secret"), []byte("secret\n"), 0o600))
 	link := filepath.Join(root, "escape")
-	require.NoError(t, os.Symlink(filepath.Join(outside, "secret"), link))
+	symlink(t, filepath.Join(outside, "secret"), link)
 
 	_, ok := safeWorkDirPath(root, resolveWorkDir(root), "escape")
 	assert.False(t, ok, "symlink target is outside workDir; must be rejected")
@@ -70,7 +68,7 @@ func TestSafeWorkDirPath_SymlinkInsideWorkDirAccepted(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(root, "real.go"), []byte("package x\n"), 0o600))
 	link := filepath.Join(root, "alias.go")
-	require.NoError(t, os.Symlink(filepath.Join(root, "real.go"), link))
+	symlink(t, filepath.Join(root, "real.go"), link)
 
 	_, ok := safeWorkDirPath(root, resolveWorkDir(root), "alias.go")
 	assert.True(t, ok, "symlink staying inside workDir must be accepted")
@@ -263,14 +261,9 @@ func TestComputeStats_NonRegularUntrackedFileSkipped(t *testing.T) {
 	// must be skipped: Stat().Size() is not meaningful and reading would
 	// either block or balloon memory. The file is excluded from totals and
 	// stats are marked partial.
-	if runtime.GOOS == "windows" {
-		t.Skip("FIFOs are not supported on Windows")
-	}
 	root := t.TempDir()
 	fifo := filepath.Join(root, "pipe")
-	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
-		t.Skipf("mkfifo unsupported: %v", err)
-	}
+	mkfifo(t, fifo)
 	entries := []diff.FileEntry{{Path: "pipe", Status: diff.FileUntracked}}
 	differ := fakeDiffer{fn: func(diff.FileDiffRequest) ([]diff.DiffLine, error) {
 		return nil, nil
