@@ -32,6 +32,7 @@ type editorFinishedMsg struct {
 	err        error
 	fileName   string
 	fileLevel  bool
+	suggesting bool
 	line       int
 	changeType string
 }
@@ -51,6 +52,7 @@ func (m *Model) openEditor() tea.Cmd {
 	}
 	fileName := m.file.name
 	fileLevel := m.annot.fileAnnotating
+	suggesting := m.annot.suggesting
 
 	var line int
 	var changeType string
@@ -66,7 +68,7 @@ func (m *Model) openEditor() tea.Cmd {
 	cmd, complete, err := m.editor.Command(content)
 	if err != nil {
 		return func() tea.Msg {
-			return editorFinishedMsg{err: err, seed: content, fileName: fileName, fileLevel: fileLevel, line: line, changeType: changeType}
+			return editorFinishedMsg{err: err, seed: content, fileName: fileName, fileLevel: fileLevel, suggesting: suggesting, line: line, changeType: changeType}
 		}
 	}
 
@@ -79,6 +81,7 @@ func (m *Model) openEditor() tea.Cmd {
 			err:        finalErr,
 			fileName:   fileName,
 			fileLevel:  fileLevel,
+			suggesting: suggesting,
 			line:       line,
 			changeType: changeType,
 		}
@@ -118,6 +121,10 @@ func (m Model) handleEditorFinished(msg editorFinishedMsg) (tea.Model, tea.Cmd) 
 	}
 	if msg.content == "" {
 		m.cancelAnnotation()
+		return m, nil
+	}
+	if msg.suggesting && !msg.fileLevel {
+		m.saveSuggestion(msg.content, msg.fileName, msg.line, msg.changeType)
 		return m, nil
 	}
 	m.saveComment(msg.content, msg.fileName, msg.fileLevel, msg.line, msg.changeType)

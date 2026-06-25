@@ -275,6 +275,7 @@ func (m Model) handleFileLoaded(msg fileLoadedMsg) (tea.Model, tea.Cmd) {
 	m.file.lines = msg.lines
 	m.resolveEmptyDiff(msg.file, m.tree.FileStatus(msg.file))
 	m.invalidateAnnotationRows()
+	m.invalidatePreviewRows()
 	m.clearSearch()
 	m.computeFileStats()
 	m.file.highlighted = m.highlighter.HighlightLines(msg.file, m.file.lines)

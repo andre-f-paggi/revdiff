@@ -104,6 +104,20 @@ func (r Resolver) LineBg(change diff.ChangeType) Color {
 	}
 }
 
+// SuggestionBg returns the ANSI background sequence for suggested-edit preview
+// rows: a dark, accent-tinted fill derived from the theme's accent so the
+// preview reads as "your proposed change" — distinct from green adds and the
+// search highlight — without a dedicated config color. Empty when Accent is unset.
+func (r Resolver) SuggestionBg() Color {
+	return Color(ansiColor(withLightness(r.colors.Accent, 0.20), 48))
+}
+
+// SuggestionFg returns the ANSI foreground sequence for suggested-edit preview
+// rows: a bright accent tint readable on SuggestionBg. Empty when Accent is unset.
+func (r Resolver) SuggestionFg() Color {
+	return Color(ansiColor(withLightness(r.colors.Accent, 0.80), 38))
+}
+
 // LineFg returns the ANSI foreground escape sequence for a diff change type.
 // Used to color the +/-/~ prefix when chroma highlighting is active and the
 // highlighted line style intentionally omits foreground (chroma owns content fg).

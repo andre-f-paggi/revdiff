@@ -19,6 +19,11 @@ import (
 // where T is one of "+", "-", or " " (literal space).
 var headerRe = regexp.MustCompile(`^## (.+?)(?::(\d+)(?:-(\d+))?)? \((file-level|\+|-| )\)$`)
 
+// suggestionOpenRe matches a suggestion fence opener: three or more backticks
+// followed by the literal word "suggestion". The captured backticks define the
+// closing fence for that block (see fenceFor in store.go).
+var suggestionOpenRe = regexp.MustCompile("^(`{3,})suggestion$")
+
 // Parse reads the markdown produced by Store.FormatOutput and returns the
 // recovered annotations in source order. Duplicates (same file/line/type) are
 // returned as separate records; callers feed them through Store.Add to apply
@@ -37,16 +42,33 @@ func Parse(r io.Reader) ([]Annotation, error) {
 type parser struct {
 	scanner *bufio.Scanner
 
-	out          []Annotation
-	current      *Annotation
-	body         []string
-	seenHeader   bool
-	nonBlankSeen bool
+	out           []Annotation
+	current       *Annotation
+	body          []string
+	replacement   []string
+	inSuggestion  bool   // currently capturing replacement lines
+	closeFence    string // exact closing fence line for the open suggestion
+	sawSuggestion bool   // a suggestion block has already closed in this record
+	seenHeader    bool
+	nonBlankSeen  bool
 }
 
 func (p *parser) parse() ([]Annotation, error) {
 	for p.scanner.Scan() {
 		line := p.scanner.Text()
+
+		// Inside a suggestion fence every line is literal replacement content
+		// until the matching closing fence; "## " and other markers are inert.
+		if p.inSuggestion {
+			if line == p.closeFence {
+				p.inSuggestion = false
+				p.sawSuggestion = true
+				continue
+			}
+			p.replacement = append(p.replacement, line)
+			continue
+		}
+
 		if strings.HasPrefix(line, "## ") {
 			ann, err := p.parseHeader(line)
 			if err != nil {
@@ -74,6 +96,20 @@ func (p *parser) parse() ([]Annotation, error) {
 			break
 		}
 
+		// A suggestion fence opener ends the comment and starts replacement
+		// capture. It is the last block of a record; after it closes, only the
+		// trailing separator remains, so further lines are ignored.
+		if !p.sawSuggestion {
+			if m := suggestionOpenRe.FindStringSubmatch(line); m != nil {
+				p.inSuggestion = true
+				p.closeFence = m[1]
+				continue
+			}
+		}
+		if p.sawSuggestion {
+			continue
+		}
+
 		p.appendBody(line)
 	}
 	if err := p.scanner.Err(); err != nil {
@@ -88,12 +124,15 @@ func (p *parser) parse() ([]Annotation, error) {
 	return p.out, nil
 }
 
-// appendBody adds a body line, stripping the inverse of escapeHeaderLines:
+// appendBody adds a body line, stripping the inverse of escapeBodyLines:
 // exactly one leading space when the line's first non-space content begins
-// with "## ".
+// with "## " or a suggestion fence opener.
 func (p *parser) appendBody(line string) {
-	if strings.HasPrefix(line, " ") && strings.HasPrefix(strings.TrimLeft(line, " "), "## ") {
-		line = line[1:]
+	if strings.HasPrefix(line, " ") {
+		trimmed := strings.TrimLeft(line, " ")
+		if strings.HasPrefix(trimmed, "## ") || suggestionOpenRe.MatchString(trimmed) {
+			line = line[1:]
+		}
 	}
 	p.body = append(p.body, line)
 }
@@ -108,9 +147,14 @@ func (p *parser) flush() {
 		p.body = p.body[:n-1]
 	}
 	p.current.Comment = strings.Join(p.body, "\n")
+	p.current.Replacement = strings.Join(p.replacement, "\n")
 	p.out = append(p.out, *p.current)
 	p.current = nil
 	p.body = nil
+	p.replacement = nil
+	p.inSuggestion = false
+	p.closeFence = ""
+	p.sawSuggestion = false
 }
 
 // parseHeader parses a single "## ..." header line into an Annotation.

@@ -449,6 +449,12 @@ func (m Model) statusModeIcons() string {
 		{"✓", m.tree.ReviewedCount() > 0},
 		{"∅", m.modes.showUntracked},
 	}
+	// suggested edits are a content state, not a persistent mode toggle: show the
+	// pencil only when the file actually has suggestions (keeps the default
+	// legend width unchanged, like the conditional reviewed-count segment).
+	if m.hasSuggestions() {
+		indicators = append(indicators, indicator{"✎", true})
+	}
 
 	mutedSeq := string(m.resolver.Color(style.ColorKeyMutedFg))
 	activeSeq := string(m.resolver.Color(style.ColorKeyStatusFg))

@@ -180,6 +180,17 @@ don't remove this validation
 Each annotation block has:
 - `## filename:line (type)` — which file and line, `(+)` = added, `(-)` = removed, `(file-level)` = file note
 - Comment text below — what the user wants changed
+- Optionally, a fenced ` ```suggestion ` block — a **literal replacement** for that line:
+
+```
+## store.go:18 (-)
+use the options form here
+```suggestion
+newFunc(x, opts)
+```
+```
+
+When an annotation carries a `suggestion` block, **apply that content verbatim at the indicated line** (replacing it) instead of re-deriving the change from the comment prose. The comment, if present, is the rationale; the block is the exact code to use. A suggestion may appear with no comment. The fence may use more than three backticks when the replacement itself contains a code fence — match the opening fence length to find the close.
 
 ### Step 3.5: Classify Annotations
 
@@ -191,7 +202,7 @@ Split annotations into two categories:
 
 These are questions the user wants answered, not code changes.
 
-**Code-change directives** — everything else. These are instructions to modify code.
+**Code-change directives** — everything else. These are instructions to modify code. Any annotation with a `suggestion` block is always a code-change directive (apply the block verbatim), regardless of its comment text.
 
 **If explanation requests are found:**
 

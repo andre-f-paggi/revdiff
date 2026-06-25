@@ -665,11 +665,17 @@ func (m Model) renderAnnotationOrInput(b *strings.Builder, idx int, annotationMa
 	if dl.ChangeType != diff.ChangeDivider {
 		key := m.annotationKey(m.diffLineNum(dl), string(dl.ChangeType))
 		if comment, ok := annotationMap[key]; ok {
-			cursor := " "
-			if idx == m.nav.diffCursor && m.annot.cursorOnAnnotation && m.layout.focus == paneDiff {
-				cursor = m.renderer.DiffCursor(m.cfg.noColors)
+			// render the comment portion unless it is a suggestion-only record
+			// (empty comment with a replacement) — matches wrappedAnnotationLineCount,
+			// which reports 0 comment rows in that case.
+			if comment != "" || m.replacementForKey(key) == "" {
+				cursor := " "
+				if idx == m.nav.diffCursor && m.annot.cursorOnAnnotation && m.layout.focus == paneDiff {
+					cursor = m.renderer.DiffCursor(m.cfg.noColors)
+				}
+				m.renderWrappedAnnotation(b, cursor, m.annotPrefix(), comment)
 			}
-			m.renderWrappedAnnotation(b, cursor, m.annotPrefix(), comment)
+			m.renderSuggestionPreview(b, key)
 		}
 	}
 }
