@@ -17,7 +17,7 @@ import (
 //	## path:N-M (T)
 //
 // where T is one of "+", "-", or " " (literal space).
-var headerRe = regexp.MustCompile(`^## (.+?)(?::(\d+)(?:-(\d+))?)? \((file-level|\+|-| )\)$`)
+var headerRe = regexp.MustCompile(`^## (.+?)(?::(\d+)(?:-(\d+))?)? \((file-level|\+|-| )\)( \[applied\])?$`)
 
 // suggestionOpenRe matches a suggestion fence opener: three or more backticks
 // followed by the literal word "suggestion". The captured backticks define the
@@ -164,7 +164,7 @@ func (p *parser) parseHeader(line string) (Annotation, error) {
 	if m == nil {
 		return Annotation{}, fmt.Errorf("malformed annotation header: %q", line)
 	}
-	ann := Annotation{File: m[1]}
+	ann := Annotation{File: m[1], Applied: m[5] != ""}
 	if m[4] == "file-level" {
 		// file-level headers are emitted as "## path (file-level)" with no
 		// numeric suffix on the path. if the regex consumed a `:N`/`:N-M`

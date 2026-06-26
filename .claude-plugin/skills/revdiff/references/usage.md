@@ -175,6 +175,9 @@ While the annotation input is active, press `Ctrl+E` (or whatever key is bound t
 | `R` | Reload diff from VCS (warns if annotations exist) |
 | `q` | Quit, output annotations to stdout |
 | `Q` | Discard all annotations and quit (confirms if annotations exist) |
+| `Ctrl+S` | Apply suggested edits to the working-tree files and quit (`apply_quit` — rebindable; confirms first) |
+
+`Ctrl+S` writes every suggested edit directly into the affected files, then quits. It applies suggestions on added/context lines only (removed-line suggestions are skipped), and only in working-tree git review (not `--staged`, two refs, `--stdin`, `--compare-*`, `--all-files`, or `--only`). Applied suggestions are tagged `[applied]` in the output; a summary prints to stderr.
 
 ## Status Bar Icons
 
@@ -306,6 +309,8 @@ newFunc(x, opts)
 ```
 
 The comment is optional. Apply the block's content verbatim at the indicated line in place of re-deriving the change from prose. The fence widens past any backtick run in the replacement so suggested edits to fenced markdown or code round-trip without escaping.
+
+A suggestion whose header is tagged `[applied]` (e.g. `## store.go:18 (-) [applied]`) was already written to the file via `Ctrl+S` — treat it as done and do **not** re-apply it.
 
 Use `--output` / `-o` flag to write annotations to a file instead of stdout.
 

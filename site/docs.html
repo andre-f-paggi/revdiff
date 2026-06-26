@@ -580,8 +580,10 @@ color-border = #6272a4
                 <tr><td><code>R</code></td><td>Reload diff from VCS (warns if annotations exist)</td></tr>
                 <tr><td><code>q</code></td><td>Quit, output annotations</td></tr>
                 <tr><td><code>Q</code></td><td>Discard annotations and quit</td></tr>
+                <tr><td><code>Ctrl+S</code></td><td>Apply suggested edits to the working-tree files and quit (<code>apply_quit</code> &mdash; rebindable; confirms first)</td></tr>
             </tbody>
         </table>
+        <p><code>Ctrl+S</code> writes every suggested edit (made with <code>s</code>) directly into the affected files, then quits &mdash; a <code>:wq</code>-style &ldquo;do it myself, skip the agent&rdquo; shortcut. It applies suggestions on added/context lines only (removed-line suggestions are skipped), and only in working-tree git review (the default, or a single ref like <code>revdiff main</code>) &mdash; not with <code>--staged</code>, two refs, <code>--stdin</code>, <code>--compare-*</code>, <code>--all-files</code>, or <code>--only</code>. Applied suggestions are tagged <code>[applied]</code> in the output and a summary prints to stderr; edits to tracked files are recoverable via <code>git</code>.</p>
 
         <h2 id="status-bar-icons">Status bar icons</h2>
         <p>The status bar shows a fixed row of mode indicators on the right side. All slots are always rendered &mdash; active modes use the status bar foreground color, inactive modes use muted gray, so the row occupies the same width regardless of what's toggled on.</p>
@@ -810,7 +812,7 @@ don't remove this validation</code></div>
         <p>Each annotation block: <code>## filename:line[-end] (type)</code> where type is <code>(+)</code> added, <code>(-)</code> removed, or <code>(file-level)</code>; <code>-end</code> is included when the annotation covers a line range.</p>
         <p>When annotation text contains the keyword &ldquo;hunk&rdquo; (case-insensitive, whole word), the output header automatically expands to include the full hunk line range (e.g., <code>handler.go:43-67 (+)</code> instead of <code>handler.go:43 (+)</code>). This gives AI consumers the range context without any extra steps.</p>
         <p>Comment body lines starting with <code>## </code> (the record-header form) are prefixed with a single space on output so parsers that split on <code>## </code> record headers cannot confuse a multi-line comment for a new record.</p>
-        <p>A suggested edit (made with <code>s</code>) is emitted as a fenced <code>```suggestion</code> block after the comment, carrying the literal replacement for that line. The comment is optional. AI consumers should apply the block&rsquo;s content verbatim at the indicated line in place of re-deriving the change from prose; the fence widens past any backtick run in the replacement so suggested edits to fenced markdown or code round-trip without escaping.</p>
+        <p>A suggested edit (made with <code>s</code>) is emitted as a fenced <code>```suggestion</code> block after the comment, carrying the literal replacement for that line. The comment is optional. AI consumers should apply the block&rsquo;s content verbatim at the indicated line in place of re-deriving the change from prose; the fence widens past any backtick run in the replacement so suggested edits to fenced markdown or code round-trip without escaping. A suggestion already written to the file via <code>Ctrl+S</code> is tagged <code>[applied]</code> in its header (e.g. <code>## store.go:18 (-) [applied]</code>) &mdash; treat those as done and do not re-apply them.</p>
 
         <h2 id="integration">Integration with other tools</h2>
         <p>The structured stdout output works with any tool that can read text. By default revdiff exits <code>0</code> even when annotations are produced; pass <code>--exit-code-on-annotations</code> to return <code>10</code> for successful annotation output.</p>

@@ -69,6 +69,7 @@ const (
 	ActionOpenEditor        Action = "open_editor"
 	ActionSuggestEdit       Action = "suggest_edit"
 	ActionDiscardSuggestion Action = "discard_suggestion"
+	ActionApplyQuit         Action = "apply_quit"
 )
 
 // SectionPane is the help section name for pane-related keybindings.
@@ -93,7 +94,7 @@ var validActions = map[Action]bool{
 	ActionInfo:        true,
 	ActionReload:      true,
 	ActionOpenEditor:  true,
-	ActionSuggestEdit: true, ActionDiscardSuggestion: true,
+	ActionSuggestEdit: true, ActionDiscardSuggestion: true, ActionApplyQuit: true,
 }
 
 // deprecatedActionAliases maps obsolete action names parsed from user
@@ -240,6 +241,7 @@ func defaultDescriptions() []HelpEntry {
 		{ActionReload, "reload diff from VCS", "View"},
 
 		// quit
+		{ActionApplyQuit, "apply suggestions & quit", "Quit"},
 		{ActionQuit, "quit", "Quit"},
 		{ActionDiscardQuit, "discard and quit", "Quit"},
 		{ActionHelp, "show help", "Quit"},
@@ -279,6 +281,7 @@ func defaultBindings() map[string]Action {
 		"d":      ActionDeleteAnnotation,
 		"s":      ActionSuggestEdit,
 		"x":      ActionDiscardSuggestion,
+		"ctrl+s": ActionApplyQuit,
 		"@":      ActionAnnotList,
 		"ctrl+e": ActionOpenEditor,
 		"}":      ActionNextAnnotation,

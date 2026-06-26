@@ -17,6 +17,7 @@ type Annotation struct {
 	Type        string // change type: "+", "-", or " "
 	Comment     string // user comment text
 	Replacement string // suggested replacement content (empty = comment only)
+	Applied     bool   // true when the replacement was written to the file (apply-on-quit)
 }
 
 // Store holds annotations in memory, keyed by filename.
@@ -50,6 +51,17 @@ func (s *Store) At(file string, line int, changeType string) (Annotation, bool) 
 		return s.annotations[file][i], true
 	}
 	return Annotation{}, false
+}
+
+// MarkApplied flags the annotation at file/line/changeType as having had its
+// replacement written to disk (apply-on-quit), so FormatOutput tags its header
+// with [applied]. No-op when no annotation matches. Returns true on a match.
+func (s *Store) MarkApplied(file string, line int, changeType string) bool {
+	if i, ok := s.find(file, line, changeType); ok {
+		s.annotations[file][i].Applied = true
+		return true
+	}
+	return false
 }
 
 // Delete removes the annotation at the given file, line and change type.
@@ -169,13 +181,17 @@ func (s *Store) FormatOutput() string {
 				buf.WriteString("\n")
 			}
 			first = false
+			tag := ""
+			if a.Applied {
+				tag = " [applied]"
+			}
 			switch {
 			case a.Line == 0:
-				fmt.Fprintf(&buf, "## %s (file-level)\n", a.File)
+				fmt.Fprintf(&buf, "## %s (file-level)%s\n", a.File, tag)
 			case a.EndLine > 0:
-				fmt.Fprintf(&buf, "## %s:%d-%d (%s)\n", a.File, a.Line, a.EndLine, a.Type)
+				fmt.Fprintf(&buf, "## %s:%d-%d (%s)%s\n", a.File, a.Line, a.EndLine, a.Type, tag)
 			default:
-				fmt.Fprintf(&buf, "## %s:%d (%s)\n", a.File, a.Line, a.Type)
+				fmt.Fprintf(&buf, "## %s:%d (%s)%s\n", a.File, a.Line, a.Type, tag)
 			}
 			s.writeBody(&buf, a)
 		}
