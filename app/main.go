@@ -194,6 +194,7 @@ func run(opts options) (int, error) {
 		CommitsApplicable: commitsApplicable(opts, commitLogger),
 		ReloadApplicable:  reloadApplicable(opts),
 		CompactApplicable: compactApplicable(opts, renderer),
+		ApplyApplicable:   applyApplicable(opts, gitRoot),
 		NoColors:          opts.NoColors,
 		NoStatusBar:       opts.NoStatusBar,
 		NoConfirmDiscard:  opts.NoConfirmDiscard,
@@ -250,6 +251,14 @@ func run(opts options) (int, error) {
 	if m.Discarded() {
 		return 0, nil
 	}
+
+	// apply-on-quit (Ctrl+S): write the suggested replacements to working-tree
+	// files before formatting output, so applied suggestions carry the [applied]
+	// tag. Gated to git working-tree review at the composition root.
+	if m.ApplyRequested() {
+		applySuggestions(m.Store(), gitRoot, os.Stderr)
+	}
+
 	output := m.Store().FormatOutput()
 	if output == "" {
 		return 0, nil

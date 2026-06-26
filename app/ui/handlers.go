@@ -146,6 +146,41 @@ func (m Model) handleDiscardQuit() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// handleApplyQuit handles Ctrl+S (apply suggestions & quit). It validates the
+// review mode and that there is something to apply, then shows a confirmation
+// prompt; the actual file writes happen in the composition root after the
+// program exits (OS work stays out of the UI). Non-applicable modes and the
+// empty case surface a transient status-bar hint instead.
+func (m Model) handleApplyQuit() (tea.Model, tea.Cmd) {
+	if !m.applyApplicable {
+		m.keys.hint = "apply not available in this review mode"
+		return m, nil
+	}
+	if edits, _ := m.suggestionStats(); edits == 0 {
+		m.keys.hint = "no suggestions to apply"
+		return m, nil
+	}
+	if m.cfg.noConfirmDiscard || m.cfg.noStatusBar {
+		m.applyRequested = true
+		return m, tea.Quit
+	}
+	m.inConfirmApply = true
+	return m, nil
+}
+
+// handleConfirmApplyKey handles the apply-on-quit confirmation prompt.
+func (m Model) handleConfirmApplyKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y":
+		m.applyRequested = true
+		return m, tea.Quit
+	case "n", "esc":
+		m.inConfirmApply = false
+		return m, nil
+	}
+	return m, nil
+}
+
 // handleFileAnnotateKey starts file-level annotation from diff pane only.
 func (m Model) handleFileAnnotateKey() (tea.Model, tea.Cmd) {
 	if m.layout.focus != paneDiff || m.file.name == "" {

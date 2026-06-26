@@ -110,6 +110,76 @@ func TestModel_SuggestionOnlyRendersNoEmptyCommentRow(t *testing.T) {
 	assert.Equal(t, 1, m.previewVisualRowCount(key))
 }
 
+func TestModel_ApplyQuitEntersConfirmWhenApplicable(t *testing.T) {
+	m := suggestTestModel()
+	m.applyApplicable = true
+	m.store.Add(annotation.Annotation{File: "a.go", Line: 2, Type: "+", Replacement: "x"})
+
+	model, _ := m.handleApplyQuit()
+	assert.True(t, model.(Model).inConfirmApply, "should show confirm prompt")
+}
+
+func TestModel_ApplyQuitHintWhenNotApplicable(t *testing.T) {
+	m := suggestTestModel()
+	m.applyApplicable = false
+	m.store.Add(annotation.Annotation{File: "a.go", Line: 2, Type: "-", Replacement: "x"})
+
+	model, _ := m.handleApplyQuit()
+	mm := model.(Model)
+	assert.False(t, mm.inConfirmApply)
+	assert.Contains(t, mm.keys.hint, "not available")
+}
+
+func TestModel_ApplyQuitHintWhenNoSuggestions(t *testing.T) {
+	m := suggestTestModel()
+	m.applyApplicable = true
+	// only a comment, no replacement
+	m.store.Add(annotation.Annotation{File: "a.go", Line: 2, Type: "-", Comment: "note"})
+
+	model, _ := m.handleApplyQuit()
+	mm := model.(Model)
+	assert.False(t, mm.inConfirmApply)
+	assert.Contains(t, mm.keys.hint, "no suggestions")
+}
+
+func TestModel_ConfirmApplyKeyConfirms(t *testing.T) {
+	m := suggestTestModel()
+	m.inConfirmApply = true
+
+	model, _ := m.handleConfirmApplyKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	assert.True(t, model.(Model).applyRequested, "y confirms apply-on-quit")
+}
+
+func TestModel_ConfirmApplyKeyCancels(t *testing.T) {
+	m := suggestTestModel()
+	m.inConfirmApply = true
+
+	model, _ := m.handleConfirmApplyKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	mm := model.(Model)
+	assert.False(t, mm.inConfirmApply)
+	assert.False(t, mm.applyRequested)
+}
+
+func TestModel_SuggestionStatsExcludesRemovedAndComments(t *testing.T) {
+	m := suggestTestModel()
+	m.store.Add(annotation.Annotation{File: "a.go", Line: 2, Type: "+", Replacement: "edit"})    // counts
+	m.store.Add(annotation.Annotation{File: "a.go", Line: 3, Type: "-", Replacement: "edit"})    // removed → excluded
+	m.store.Add(annotation.Annotation{File: "a.go", Line: 4, Type: "+", Comment: "just a note"}) // no replacement → excluded
+
+	edits, files := m.suggestionStats()
+	assert.Equal(t, 1, edits)
+	assert.Equal(t, 1, files)
+}
+
+func TestModel_ConfirmApplyStatusBarPrompt(t *testing.T) {
+	m := suggestTestModel()
+	m.layout.width = 200
+	m.inConfirmApply = true
+	m.store.Add(annotation.Annotation{File: "a.go", Line: 2, Type: "+", Replacement: "edit"})
+
+	assert.Contains(t, m.statusBarText(), "apply 1 suggested edit to 1 file and quit? [y/n]")
+}
+
 func TestModel_StatusShowsSuggestionIcon(t *testing.T) {
 	m := suggestTestModel()
 	m.layout.width = 200
