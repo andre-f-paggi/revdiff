@@ -208,7 +208,7 @@ func TestPiExecutableRegressionHasCIBunSetup(t *testing.T) {
 	root := testRepoRoot(t)
 	ci := readRepoFile(t, root, ".github", "workflows", "ci.yml")
 	assert.Contains(t, ci, "oven-sh/setup-bun")
-	assert.Contains(t, ci, "go test -race")
+	assert.Contains(t, ci, "go test -tags forceposix -race")
 }
 
 func TestPiExtensionExecutableBehavior(t *testing.T) {
