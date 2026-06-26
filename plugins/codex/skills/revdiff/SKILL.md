@@ -192,6 +192,19 @@ don't remove this validation
 Each annotation block has:
 - `## filename:line (type)` — which file and line, `(+)` = added, `(-)` = removed, `(file-level)` = file note
 - Comment text below — what the user wants changed
+- Optionally, a fenced ` ```suggestion ` block — a literal replacement for that line:
+
+```
+## store.go:18 (-)
+use the options form here
+```suggestion
+newFunc(x, opts)
+```
+```
+
+When an annotation carries a `suggestion` block, apply that content verbatim at the indicated line (replacing it) instead of re-deriving the change from the comment prose. The comment, if present, is the rationale; the block is the exact code. A suggestion may appear with no comment, and is always a code-change directive. The fence may use more than three backticks when the replacement contains its own code fence — match the opening fence length to find the close.
+
+A header tagged `[applied]` (e.g. `## store.go:18 (-) [applied]`) was already written to the file by the user via revdiff's `Ctrl+S` — it is done; do not re-apply it. Untagged suggestions still need applying.
 
 ### Step 3.5: Classify Annotations
 

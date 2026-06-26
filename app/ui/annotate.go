@@ -201,6 +201,10 @@ func (m *Model) saveAnnotation() {
 		m.cancelAnnotation()
 		return
 	}
+	if m.annot.suggesting {
+		m.saveSuggestion(text, m.file.name, m.diffLineNum(dl), string(dl.ChangeType))
+		return
+	}
 	m.saveComment(text, m.file.name, false, m.diffLineNum(dl), string(dl.ChangeType))
 }
 
@@ -263,6 +267,7 @@ func (m *Model) saveComment(text, fileName string, fileLevel bool, line int, cha
 func (m *Model) cancelAnnotation() {
 	m.annot.annotating = false
 	m.annot.fileAnnotating = false
+	m.annot.suggesting = false
 	m.annot.existingMultiline = ""
 	m.layout.viewport.SetContent(m.renderDiff())
 }
@@ -520,6 +525,13 @@ func (m *Model) wrappedAnnotationLineCount(key string) int {
 	if prefix == "" && body == "" {
 		return 1
 	}
+	// suggestion-only record (empty comment but a replacement is present): the
+	// comment portion contributes no rows — the preview rows carry the content.
+	// the legacy single blank row is reserved only when there is also no
+	// replacement (e.g. an empty comment preloaded via --annotations).
+	if body == "" && m.replacementForKey(key) != "" {
+		return 0
+	}
 	return len(m.annotationVisualRows(prefix, body))
 }
 
@@ -537,7 +549,8 @@ func (m Model) hunkLineHeight(idx int, hunks []int, annotationSet map[string]boo
 	if dl.ChangeType != diff.ChangeDivider {
 		key := m.annotationKey(m.diffLineNum(dl), string(dl.ChangeType))
 		if annotationSet[key] {
-			h += m.wrappedAnnotationLineCount(key)
+			h += m.wrappedAnnotationLineCount(key) // comment portion
+			h += m.previewVisualRowCount(key)      // suggested-edit preview portion
 		}
 	}
 	return h
@@ -618,7 +631,16 @@ func (m Model) rowOnAnnotationSubLine(idx, relRow, h int, hunks []int, annSet ma
 		return false
 	}
 	annRows := m.wrappedAnnotationLineCount(key)
-	return annRows > 0 && relRow >= h-annRows
+	if annRows == 0 {
+		return false
+	}
+	// rows are laid out as: diff row (+ wrap continuations), then the comment
+	// rows, then the suggested-edit preview rows. The cursor may sit on the
+	// comment band only; preview rows are non-interactive, so exclude them by
+	// anchoring the comment band above the preview rows at the bottom.
+	previewRows := m.previewVisualRowCount(key)
+	commentTop := h - annRows - previewRows
+	return relRow >= commentTop && relRow < commentTop+annRows
 }
 
 // visualRowToDiffLine maps a visual row within the diff viewport content back

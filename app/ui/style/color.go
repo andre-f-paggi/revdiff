@@ -83,6 +83,25 @@ func shiftLightness(hexColor string, amount float64) string {
 	return fmt.Sprintf("#%02x%02x%02x", nr, ng, nb)
 }
 
+// withLightness returns hexColor recolored to an absolute HSL lightness while
+// preserving its hue and saturation. Used to derive suggestion-preview colors
+// (a dark accent-tinted background, a bright accent-tinted foreground) from the
+// theme's accent so the preview tracks the active theme without a dedicated
+// config field. Returns the input unchanged if empty or unparseable.
+func withLightness(hexColor string, l float64) string {
+	if hexColor == "" {
+		return ""
+	}
+	r, g, b, ok := parseHexRGB(hexColor)
+	if !ok {
+		return hexColor
+	}
+	h, s, _ := rgbToHSL(r, g, b)
+	l = math.Max(0, math.Min(1, l))
+	nr, ng, nb := hslToRGB(h, s, l)
+	return fmt.Sprintf("#%02x%02x%02x", nr, ng, nb)
+}
+
 // parseHexRGB parses "#RRGGBB" into 0-255 components.
 // returns ok=false if the string is not exactly 7 chars, missing the leading #,
 // or contains any non-hex digits.

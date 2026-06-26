@@ -552,10 +552,13 @@ color-border = #6272a4
                 <tr><td><code>@</code></td><td>Toggle annotation list popup</td></tr>
                 <tr><td><code>}</code> / <code>{</code></td><td>Jump to next/previous annotation (always crosses file boundaries; silent no-op at the first/last annotation)</td></tr>
                 <tr><td><code>d</code></td><td>Delete annotation under cursor</td></tr>
+                <tr><td><code>s</code></td><td>Suggest a literal edit for the current line (<code>suggest_edit</code> &mdash; rebindable)</td></tr>
+                <tr><td><code>x</code></td><td>Discard the suggested edit under cursor, rolling back to original (<code>discard_suggestion</code> &mdash; rebindable)</td></tr>
                 <tr><td><code>Ctrl+E</code></td><td>Open <code>$EDITOR</code> for multi-line annotation (<code>open_editor</code> &mdash; rebindable, during annotation input)</td></tr>
                 <tr><td><code>Esc</code></td><td>Cancel annotation input</td></tr>
             </tbody>
         </table>
+        <p>Press <code>s</code> on a diff line to propose a literal replacement. The input is seeded with the original line content; edit it (use <code>Ctrl+E</code> for multi-line replacements) and save with <code>Enter</code>. The proposed content is shown inline beneath the original line on a distinct highlight background, and a <code>&#9998;</code> indicator appears in the status bar. Press <code>x</code> to discard a suggestion and roll back to the original. A suggestion and a comment can coexist on the same line &mdash; the comment explains <em>why</em>, the suggestion gives the literal <em>what</em>.</p>
         <p>While the annotation input is active, press <code>Ctrl+E</code> (or whatever key is bound to <code>open_editor</code>) to hand off the current text to an external editor for multi-line comments. Editor resolution: <code>$EDITOR</code> &rarr; <code>$VISUAL</code> &rarr; <code>vi</code>. Values with arguments work (e.g. <code>EDITOR="code --wait"</code>). On editor save and quit, the full file contents (including newlines) become the annotation. Quitting the editor with an empty file cancels the annotation and preserves any previously stored note on that line. Multi-line annotations are rendered line-by-line in the diff view, shown flattened in the annotation list popup (<code>@</code>), and emitted with embedded newlines in the structured output.</p>
 
         <h2 id="view">View toggles</h2>
@@ -577,8 +580,10 @@ color-border = #6272a4
                 <tr><td><code>R</code></td><td>Reload diff from VCS (warns if annotations exist)</td></tr>
                 <tr><td><code>q</code></td><td>Quit, output annotations</td></tr>
                 <tr><td><code>Q</code></td><td>Discard annotations and quit</td></tr>
+                <tr><td><code>Ctrl+S</code></td><td>Apply suggested edits to the working-tree files and quit (<code>apply_quit</code> &mdash; rebindable; confirms first)</td></tr>
             </tbody>
         </table>
+        <p><code>Ctrl+S</code> writes every suggested edit (made with <code>s</code>) directly into the affected files, then quits &mdash; a <code>:wq</code>-style &ldquo;do it myself, skip the agent&rdquo; shortcut. It applies suggestions on added/context lines only (removed-line suggestions are skipped), and only in working-tree git review (the default, or a single ref like <code>revdiff main</code>) &mdash; not with <code>--staged</code>, two refs, <code>--stdin</code>, <code>--compare-*</code>, <code>--all-files</code>, or <code>--only</code>. Applied suggestions are tagged <code>[applied]</code> in the output and a summary prints to stderr; edits to tracked files are recoverable via <code>git</code>.</p>
 
         <h2 id="status-bar-icons">Status bar icons</h2>
         <p>The status bar shows a fixed row of mode indicators on the right side. All slots are always rendered &mdash; active modes use the status bar foreground color, inactive modes use muted gray, so the row occupies the same width regardless of what's toggled on.</p>
@@ -642,7 +647,7 @@ map alt+t&gt;n theme_select</code></div>
         <p><strong>File/Hunk:</strong> <code>next_item</code>, <code>prev_item</code>, <code>next_hunk</code>, <code>prev_hunk</code></p>
         <p><strong>Pane:</strong> <code>toggle_pane</code>, <code>focus_tree</code>, <code>focus_diff</code></p>
         <p><strong>Search:</strong> <code>search</code></p>
-        <p><strong>Annotations:</strong> <code>confirm</code>, <code>annotate_file</code>, <code>delete_annotation</code>, <code>annot_list</code>, <code>open_editor</code>, <code>next_annotation</code>, <code>prev_annotation</code></p>
+        <p><strong>Annotations:</strong> <code>confirm</code>, <code>annotate_file</code>, <code>delete_annotation</code>, <code>suggest_edit</code>, <code>discard_suggestion</code>, <code>annot_list</code>, <code>open_editor</code>, <code>next_annotation</code>, <code>prev_annotation</code></p>
         <p><strong>View:</strong> <code>toggle_collapsed</code>, <code>toggle_compact</code>, <code>toggle_wrap</code>, <code>toggle_tree</code>, <code>toggle_line_numbers</code>, <code>toggle_blame</code>, <code>toggle_word_diff</code>, <code>toggle_hunk</code>, <code>toggle_untracked</code>, <code>mark_reviewed</code>, <code>theme_select</code>, <code>filter</code>, <code>info</code>, <code>reload</code></p>
         <p><strong>Quit:</strong> <code>quit</code>, <code>discard_quit</code>, <code>help</code>, <code>dismiss</code></p>
 
@@ -807,6 +812,7 @@ don't remove this validation</code></div>
         <p>Each annotation block: <code>## filename:line[-end] (type)</code> where type is <code>(+)</code> added, <code>(-)</code> removed, or <code>(file-level)</code>; <code>-end</code> is included when the annotation covers a line range.</p>
         <p>When annotation text contains the keyword &ldquo;hunk&rdquo; (case-insensitive, whole word), the output header automatically expands to include the full hunk line range (e.g., <code>handler.go:43-67 (+)</code> instead of <code>handler.go:43 (+)</code>). This gives AI consumers the range context without any extra steps.</p>
         <p>Comment body lines starting with <code>## </code> (the record-header form) are prefixed with a single space on output so parsers that split on <code>## </code> record headers cannot confuse a multi-line comment for a new record.</p>
+        <p>A suggested edit (made with <code>s</code>) is emitted as a fenced <code>```suggestion</code> block after the comment, carrying the literal replacement for that line. The comment is optional. AI consumers should apply the block&rsquo;s content verbatim at the indicated line in place of re-deriving the change from prose; the fence widens past any backtick run in the replacement so suggested edits to fenced markdown or code round-trip without escaping. A suggestion already written to the file via <code>Ctrl+S</code> is tagged <code>[applied]</code> in its header (e.g. <code>## store.go:18 (-) [applied]</code>) &mdash; treat those as done and do not re-apply them.</p>
 
         <h2 id="integration">Integration with other tools</h2>
         <p>The structured stdout output works with any tool that can read text. By default revdiff exits <code>0</code> even when annotations are produced; pass <code>--exit-code-on-annotations</code> to return <code>10</code> for successful annotation output.</p>

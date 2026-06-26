@@ -91,6 +91,7 @@ func (m *Model) cancelThemeSelect() {
 	}
 	m.themePreview = nil
 	m.invalidateAnnotationRows()
+	m.invalidatePreviewRows()
 	m.refreshDiff()
 }
 
@@ -115,6 +116,7 @@ func (m *Model) applyTheme(spec ThemeSpec) {
 		}
 	}
 	m.invalidateAnnotationRows()
+	m.invalidatePreviewRows()
 	if m.file.name != "" && len(m.file.lines) > 0 {
 		if chromaChanged {
 			m.file.highlighted = m.highlighter.HighlightLines(m.file.name, m.file.lines)

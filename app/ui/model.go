@@ -67,6 +67,8 @@ type styleResolver interface {
 	LineStyle(change diff.ChangeType, highlighted bool) lipgloss.Style
 	WordDiffBg(change diff.ChangeType) style.Color
 	IndicatorBg(change diff.ChangeType) style.Color
+	SuggestionBg() style.Color
+	SuggestionFg() style.Color
 }
 
 // styleRenderer is what Model needs for compound ANSI rendering operations.
@@ -443,6 +445,7 @@ type vimState struct {
 type annotationState struct {
 	annotating         bool            // true when annotation text input is active
 	fileAnnotating     bool            // true when annotating at file level (Line=0)
+	suggesting         bool            // true when the active input edits a suggested replacement (not a comment)
 	cursorOnAnnotation bool            // true when cursor is on the annotation sub-line (not the diff line)
 	input              textinput.Model // text input for annotations
 	// existingMultiline holds the original multi-line comment of an annotation
@@ -459,6 +462,10 @@ type annotationState struct {
 	// rows change). width changes self-invalidate via the cache key.
 	// NewModel initializes this map; direct Model{} construction is unsupported.
 	rowCache map[annotCacheKey][]string
+	// previewCache memoizes suggested-edit preview rows keyed by (replacement,
+	// width). Invalidated alongside rowCache (same callers) since preview rows
+	// bake in the resolver's suggestion colors; width self-invalidates via the key.
+	previewCache map[previewCacheKey][]string
 }
 
 // Model is the top-level bubbletea model for revdiff.
@@ -505,6 +512,10 @@ type Model struct {
 
 	discarded        bool // true when user chose to discard annotations and quit
 	inConfirmDiscard bool // true when showing discard confirmation prompt
+
+	applyApplicable bool // composition-root verdict: working-tree review where suggestions can be written
+	inConfirmApply  bool // true when showing the apply-suggestions confirmation prompt
+	applyRequested  bool // true when the user confirmed apply-on-quit; main.go performs the writes post-run
 
 	pendingAnnotJump *annotation.Annotation // pending jump target after cross-file annotation list jump
 
@@ -637,6 +648,11 @@ type ModelConfig struct {
 	// reload is impossible). Computed at composition root in main.go and copied
 	// into Model state. Follows the same pattern as CommitsApplicable.
 	ReloadApplicable bool
+	// ApplyApplicable is the composition-root verdict on whether apply-on-quit
+	// (Ctrl+S) can write suggestions to files: true only for working-tree VCS
+	// review, where added/context lines map directly to working-tree lines.
+	// Follows the same pattern as ReloadApplicable.
+	ApplyApplicable bool
 	// Compact is the initial value for the compact diff mode toggle. When true
 	// the UI starts with small-context diffs (CompactContext lines around each
 	// change) instead of the full-file default. Runtime-toggleable via C.
@@ -783,8 +799,9 @@ func NewModel(cfg ModelConfig) (Model, error) {
 			descriptionHighlighted: precomputeDescriptionHighlight(cfg.Highlighter, descriptionFromConfig(reviewCfg)),
 		},
 		reload:          reloadState{applicable: cfg.ReloadApplicable},
+		applyApplicable: cfg.ApplyApplicable,
 		compact:         compactState{applicable: cfg.CompactApplicable},
-		annot:           annotationState{rowCache: make(map[annotCacheKey][]string)},
+		annot:           annotationState{rowCache: make(map[annotCacheKey][]string), previewCache: make(map[previewCacheKey][]string)},
 		loadUntracked:   cfg.LoadUntracked,
 		activeThemeName: cfg.ActiveThemeName,
 	}, nil
@@ -798,6 +815,34 @@ func (m Model) Store() *annotation.Store {
 // Discarded returns true when the user chose to discard annotations and quit.
 func (m Model) Discarded() bool {
 	return m.discarded
+}
+
+// ApplyRequested reports whether the user confirmed apply-on-quit (Ctrl+S → y).
+// The composition root reads this after the program exits and writes the
+// suggested replacements to the working-tree files.
+func (m Model) ApplyRequested() bool {
+	return m.applyRequested
+}
+
+// suggestionStats returns the number of applicable suggested edits and the
+// number of distinct files they touch. A suggestion is applicable when it has a
+// replacement on an added or context line (removed lines have no working-tree
+// counterpart and are excluded). Drives the confirm prompt counts.
+func (m Model) suggestionStats() (edits, files int) {
+	seen := map[string]bool{}
+	for file, anns := range m.store.All() {
+		for _, a := range anns {
+			if a.Replacement == "" || a.Type == "-" || a.Line == 0 {
+				continue
+			}
+			edits++
+			if !seen[file] {
+				seen[file] = true
+				files++
+			}
+		}
+	}
+	return edits, files
 }
 
 // Init initializes the model by loading changed files and the commit log
@@ -814,6 +859,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		if m.inConfirmDiscard {
 			return m.handleConfirmDiscardKey(msg)
+		}
+		if m.inConfirmApply {
+			return m.handleConfirmApplyKey(msg)
 		}
 		return m.handleKey(msg)
 	case tea.MouseMsg:
@@ -928,6 +976,8 @@ func (m Model) dispatchAction(action keymap.Action) (tea.Model, tea.Cmd) {
 		return m.handleEscKey()
 	case keymap.ActionDiscardQuit:
 		return m.handleDiscardQuit()
+	case keymap.ActionApplyQuit:
+		return m.handleApplyQuit()
 	case keymap.ActionQuit:
 		return m, tea.Quit
 	case keymap.ActionTogglePane:

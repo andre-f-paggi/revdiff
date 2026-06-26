@@ -98,7 +98,7 @@ Behavior:
   - on main/master with a clean tree → review `HEAD~1`
   - on a clean feature branch → review against the detected main branch
   - on a dirty feature branch → asks whether to review uncommitted changes or the branch diff; staged-only uncommitted review uses `--staged`
-- After revdiff exits with annotations, `revdiff_review` returns them in the tool result; the agent processes that result directly.
+- After revdiff exits with annotations, `revdiff_review` returns them in the tool result; the agent processes that result directly. An annotation may include a fenced ` ```suggestion ` block — a literal replacement for that line; apply the block's content verbatim at the indicated line instead of re-deriving the change from the comment. A header tagged `[applied]` means the user already wrote that suggestion to the file via revdiff's `Ctrl+S` — do not re-apply it.
 - If revdiff exits without captured annotations, report that no annotations were captured and stop.
 - When recent agent work created new untracked files, include `--untracked` so those files appear in the review tree.
 - When launching after analysis or refactor work, include `--description` or `--description-file` so the info popup explains the review context.

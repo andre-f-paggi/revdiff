@@ -640,6 +640,12 @@ func (m Model) handleDiffAction(action keymap.Action) (tea.Model, tea.Cmd) {
 	case keymap.ActionDeleteAnnotation:
 		cmd := m.deleteAnnotation()
 		return m, cmd
+	case keymap.ActionSuggestEdit:
+		cmd := m.startSuggestEdit()
+		return m, cmd
+	case keymap.ActionDiscardSuggestion:
+		cmd := m.discardSuggestion()
+		return m, cmd
 	case keymap.ActionToggleHunk:
 		m.toggleHunkExpansion()
 		return m, nil

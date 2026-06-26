@@ -7,13 +7,17 @@ import (
 	"strings"
 )
 
-// Annotation represents a user comment on a specific diff line.
+// Annotation represents a user comment and/or suggested edit on a specific
+// diff line. A pure comment leaves Replacement empty; a suggested edit may
+// carry both a Comment (the rationale) and a Replacement (the literal content).
 type Annotation struct {
-	File    string // file path relative to repo root
-	Line    int    // line number in the diff
-	EndLine int    // end line of hunk range, 0 means no range
-	Type    string // change type: "+", "-", or " "
-	Comment string // user comment text
+	File        string // file path relative to repo root
+	Line        int    // line number in the diff
+	EndLine     int    // end line of hunk range, 0 means no range
+	Type        string // change type: "+", "-", or " "
+	Comment     string // user comment text
+	Replacement string // suggested replacement content (empty = comment only)
+	Applied     bool   // true when the replacement was written to the file (apply-on-quit)
 }
 
 // Store holds annotations in memory, keyed by filename.
@@ -33,9 +37,31 @@ func (s *Store) Add(a Annotation) {
 	if i, ok := s.find(a.File, a.Line, a.Type); ok {
 		existing[i].Comment = a.Comment
 		existing[i].EndLine = a.EndLine
+		existing[i].Replacement = a.Replacement
 		return
 	}
 	s.annotations[a.File] = append(existing, a)
+}
+
+// At returns the annotation at the given file, line and change type, if one
+// exists. Callers merging a comment with a suggested edit (or vice versa) read
+// the current record, set the field they own, and Add it back.
+func (s *Store) At(file string, line int, changeType string) (Annotation, bool) {
+	if i, ok := s.find(file, line, changeType); ok {
+		return s.annotations[file][i], true
+	}
+	return Annotation{}, false
+}
+
+// MarkApplied flags the annotation at file/line/changeType as having had its
+// replacement written to disk (apply-on-quit), so FormatOutput tags its header
+// with [applied]. No-op when no annotation matches. Returns true on a match.
+func (s *Store) MarkApplied(file string, line int, changeType string) bool {
+	if i, ok := s.find(file, line, changeType); ok {
+		s.annotations[file][i].Applied = true
+		return true
+	}
+	return false
 }
 
 // Delete removes the annotation at the given file, line and change type.
@@ -155,33 +181,78 @@ func (s *Store) FormatOutput() string {
 				buf.WriteString("\n")
 			}
 			first = false
-			body := s.escapeHeaderLines(a.Comment)
+			tag := ""
+			if a.Applied {
+				tag = " [applied]"
+			}
 			switch {
 			case a.Line == 0:
-				fmt.Fprintf(&buf, "## %s (file-level)\n%s\n", a.File, body)
+				fmt.Fprintf(&buf, "## %s (file-level)%s\n", a.File, tag)
 			case a.EndLine > 0:
-				fmt.Fprintf(&buf, "## %s:%d-%d (%s)\n%s\n", a.File, a.Line, a.EndLine, a.Type, body)
+				fmt.Fprintf(&buf, "## %s:%d-%d (%s)%s\n", a.File, a.Line, a.EndLine, a.Type, tag)
 			default:
-				fmt.Fprintf(&buf, "## %s:%d (%s)\n%s\n", a.File, a.Line, a.Type, body)
+				fmt.Fprintf(&buf, "## %s:%d (%s)%s\n", a.File, a.Line, a.Type, tag)
 			}
+			s.writeBody(&buf, a)
 		}
 	}
 	return buf.String()
 }
 
-// escapeHeaderLines prefixes any body line whose first non-space content is
-// "## " with a single extra space. The parser inverts this by stripping one
-// leading space from any body line that, after left-trimming, begins with
-// "## ". Escaping pre-indented variants (e.g. " ## ") keeps the round-trip
-// symmetric for arbitrary user content. Other heading forms like "### " are
-// not escaped since they cannot collide with the record-header split marker.
-func (s *Store) escapeHeaderLines(body string) string {
-	if !strings.Contains(body, "## ") {
+// writeBody emits the comment lines (with header/fence escaping) followed by an
+// optional ```suggestion fence carrying the literal replacement. The fence
+// length grows past the longest backtick run in the replacement so code
+// containing its own fences round-trips without escaping (CommonMark nesting).
+func (s *Store) writeBody(buf *strings.Builder, a Annotation) {
+	if a.Comment != "" {
+		buf.WriteString(s.escapeBodyLines(a.Comment))
+		buf.WriteString("\n")
+	}
+	if a.Replacement != "" {
+		fence := fenceFor(a.Replacement)
+		buf.WriteString(fence + "suggestion\n")
+		buf.WriteString(a.Replacement)
+		buf.WriteString("\n" + fence + "\n")
+	}
+}
+
+// fenceFor returns a run of backticks (at least 3) longer than the longest
+// backtick run in content, so neither the opening nor closing fence can collide
+// with a line inside content.
+func fenceFor(content string) string {
+	longest, run := 0, 0
+	for _, r := range content {
+		if r == '`' {
+			run++
+			if run > longest {
+				longest = run
+			}
+			continue
+		}
+		run = 0
+	}
+	n := longest + 1
+	if n < 3 {
+		n = 3
+	}
+	return strings.Repeat("`", n)
+}
+
+// escapeBodyLines prefixes a single extra space onto any comment line that,
+// after left-trimming, would be mistaken for a record header ("## ") or a
+// suggestion fence opener ("```suggestion"). The parser inverts this by
+// stripping one leading space from matching body lines. Escaping pre-indented
+// variants keeps the round-trip symmetric for arbitrary user content. Other
+// heading forms like "### " are not escaped since they cannot collide with the
+// record-header split marker.
+func (s *Store) escapeBodyLines(body string) string {
+	if !strings.Contains(body, "## ") && !strings.Contains(body, "```") {
 		return body
 	}
 	lines := strings.Split(body, "\n")
 	for i, line := range lines {
-		if strings.HasPrefix(strings.TrimLeft(line, " "), "## ") {
+		trimmed := strings.TrimLeft(line, " ")
+		if strings.HasPrefix(trimmed, "## ") || suggestionOpenRe.MatchString(trimmed) {
 			lines[i] = " " + line
 		}
 	}

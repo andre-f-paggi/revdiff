@@ -220,6 +220,14 @@ func (m Model) transientHint() string {
 // statusBarText returns context-sensitive status line content.
 // shows search input (when typing), or filename, diff stats, hunk position,
 // search match position, mode indicators, and right-aligned annotation count + help hint.
+// plural returns one or many depending on n.
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return one
+	}
+	return many
+}
+
 func (m Model) statusBarText() string {
 	if m.search.active {
 		return m.searchBarText()
@@ -227,6 +235,12 @@ func (m Model) statusBarText() string {
 
 	if m.inConfirmDiscard {
 		return fmt.Sprintf("discard %d annotations? [y/n]", m.store.Count())
+	}
+
+	if m.inConfirmApply {
+		edits, files := m.suggestionStats()
+		return fmt.Sprintf("apply %d suggested %s to %d %s and quit? [y/n]",
+			edits, plural(edits, "edit", "edits"), files, plural(files, "file", "files"))
 	}
 
 	if m.annot.annotating {
@@ -448,6 +462,12 @@ func (m Model) statusModeIcons() string {
 		{"±", m.modes.wordDiff},
 		{"✓", m.tree.ReviewedCount() > 0},
 		{"∅", m.modes.showUntracked},
+	}
+	// suggested edits are a content state, not a persistent mode toggle: show the
+	// pencil only when the file actually has suggestions (keeps the default
+	// legend width unchanged, like the conditional reviewed-count segment).
+	if m.hasSuggestions() {
+		indicators = append(indicators, indicator{"✎", true})
 	}
 
 	mutedSeq := string(m.resolver.Color(style.ColorKeyMutedFg))
