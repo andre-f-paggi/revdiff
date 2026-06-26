@@ -91,6 +91,42 @@ func TestParse_SuggestionWithHashLinesInReplacement(t *testing.T) {
 	assert.Equal(t, "second", parsed[1].Comment)
 }
 
+func TestFormatOutput_AppliedTag(t *testing.T) {
+	s := NewStore()
+	s.Add(Annotation{File: "a.go", Line: 42, Type: "-", Comment: "use options", Replacement: "newFunc(x)"})
+	require.True(t, s.MarkApplied("a.go", 42, "-"))
+
+	want := "## a.go:42 (-) [applied]\nuse options\n```suggestion\nnewFunc(x)\n```\n"
+	assert.Equal(t, want, s.FormatOutput())
+}
+
+func TestParse_AppliedTagRoundTrip(t *testing.T) {
+	cases := []struct {
+		name string
+		ann  Annotation
+	}{
+		{"line applied", Annotation{File: "a.go", Line: 5, Type: "+", Replacement: "x()", Applied: true}},
+		{"range applied", Annotation{File: "a.go", Line: 5, EndLine: 7, Type: "-", Comment: "c", Replacement: "y()", Applied: true}},
+		{"not applied", Annotation{File: "a.go", Line: 9, Type: "+", Replacement: "z()"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := NewStore()
+			s.Add(tc.ann)
+			parsed, err := Parse(strings.NewReader(s.FormatOutput()))
+			require.NoError(t, err)
+			require.Len(t, parsed, 1)
+			assert.Equal(t, tc.ann.Applied, parsed[0].Applied)
+			assert.Equal(t, tc.ann.Replacement, parsed[0].Replacement)
+		})
+	}
+}
+
+func TestStore_MarkAppliedNoMatch(t *testing.T) {
+	s := NewStore()
+	assert.False(t, s.MarkApplied("a.go", 1, "+"))
+}
+
 func TestStore_AddClearsReplacement(t *testing.T) {
 	// Re-adding with an empty Replacement clears a prior suggestion (the
 	// discard-suggestion path keeps the comment but drops the edit).

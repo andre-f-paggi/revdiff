@@ -756,6 +756,9 @@ While the annotation input is active, press `Ctrl+E` (or whatever key is bound t
 | `R` | Reload diff from VCS (warns if annotations exist) |
 | `q` | Quit, output annotations to stdout |
 | `Q` | Discard all annotations and quit (confirms if annotations exist) |
+| `Ctrl+S` | Apply suggested edits to the working-tree files and quit (`apply_quit` — rebindable; confirms first) |
+
+`Ctrl+S` writes every suggested edit (made with `s`) directly into the affected files, then quits — a `:wq`-style "do it myself, skip the agent" shortcut. It only applies suggestions on added/context lines (which map to real working-tree lines); suggestions on removed (`-`) lines are skipped. It is available only in **working-tree git review** (the default, or a single ref like `revdiff main`) — not with `--staged`, two refs, `--stdin`, `--compare-*`, `--all-files`, or `--only`. Applied suggestions are tagged `[applied]` in the stdout output, and a summary is printed to stderr. Edits to tracked files are recoverable via `git`.
 
 ### Status Bar Icons
 
@@ -912,6 +915,8 @@ newFunc(x, opts)
 ```
 
 The comment is optional — a suggestion may stand alone. AI consumers should apply the block's content verbatim at the indicated line, in place of re-deriving the change from prose. The fence widens past any backtick run in the replacement (CommonMark nesting), so suggested edits to fenced markdown or code round-trip without escaping.
+
+When a suggestion was already written to the file via `Ctrl+S` (apply-on-quit), its header is tagged `[applied]` (e.g. `## store.go:18 (-) [applied]`). AI consumers should treat an `[applied]` suggestion as **already done — do not re-apply it**; untagged suggestions still need applying.
 
 ## Contributing
 
