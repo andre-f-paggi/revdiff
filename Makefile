@@ -5,16 +5,19 @@ HASH=$(shell git rev-parse --short=7 HEAD 2>/dev/null)
 TIMESTAMP=$(shell git log -1 --format=%ct HEAD 2>/dev/null | xargs -I{} date -u -r {} +%Y%m%dT%H%M%S)
 GIT_REV=$(shell printf "%s-%s-%s" "$(BRANCH)" "$(HASH)" "$(TIMESTAMP)")
 REV=$(if $(filter --,$(GIT_REV)),latest,$(GIT_REV))
+# executable suffix (".exe" on Windows, empty elsewhere) so `make build` emits a
+# runnable binary on every platform
+GOEXE=$(shell go env GOEXE)
 
 all: test build
 
 build:
-	go build -ldflags "-X main.revision=$(REV) -s -w" -o .bin/revdiff.$(BRANCH) ./app
-	cp .bin/revdiff.$(BRANCH) .bin/revdiff
+	go build -tags forceposix -ldflags "-X main.revision=$(REV) -s -w" -o .bin/revdiff.$(BRANCH)$(GOEXE) ./app
+	cp .bin/revdiff.$(BRANCH)$(GOEXE) .bin/revdiff$(GOEXE)
 
 test:
 	go clean -testcache
-	go test -race -coverprofile=coverage.out ./...
+	go test -tags forceposix -race -coverprofile=coverage.out ./...
 	grep -v "_mock.go" coverage.out | grep -v mocks > coverage_no_mocks.out
 	go tool cover -func=coverage_no_mocks.out
 	rm coverage.out coverage_no_mocks.out
@@ -26,7 +29,7 @@ fmt:
 	~/.claude/format.sh
 
 race:
-	go test -race -timeout=60s ./...
+	go test -tags forceposix -race -timeout=60s ./...
 
 version:
 	@echo "branch: $(BRANCH), hash: $(HASH), timestamp: $(TIMESTAMP)"

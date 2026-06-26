@@ -174,7 +174,9 @@ func (s *Service) filterRepoFiles(gitRoot string, files []string) []string {
 		if err != nil || !filepath.IsLocal(rel) {
 			continue // outside repo
 		}
-		result = append(result, rel)
+		// git pathspecs use forward slashes on every platform; filepath.Rel
+		// yields backslashes on Windows, so normalize before handing to git.
+		result = append(result, filepath.ToSlash(rel))
 	}
 	return result
 }

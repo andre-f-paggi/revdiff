@@ -140,7 +140,9 @@ func (fr *FallbackRenderer) relativePath(absPath string) string {
 	if err != nil || strings.HasPrefix(rel, "..") {
 		return absPath
 	}
-	return rel
+	// the caller compares against git's forward-slash file paths; filepath.Rel
+	// yields backslashes on Windows, so normalize before returning.
+	return filepath.ToSlash(rel)
 }
 
 // FileReader is a standalone Renderer for use when no git repo is available.

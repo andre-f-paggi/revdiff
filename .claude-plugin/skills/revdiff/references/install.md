@@ -5,7 +5,15 @@
 brew install umputun/apps/revdiff
 ```
 
-**Binary releases:** download from [GitHub Releases](https://github.com/umputun/revdiff/releases) (deb, rpm, archives for linux/darwin amd64/arm64).
+**Windows:** download `revdiff_*_windows_*.zip` from [GitHub Releases](https://github.com/umputun/revdiff/releases), extract `revdiff.exe`, and add it to your `PATH`. For the Claude Code plugin on Windows, install **Git Bash** (Git for Windows) and run inside **Windows Terminal** — the launcher runs under Git Bash and opens revdiff in a new `wt.exe` window.
+
+**Go (any platform):**
+```bash
+go install -tags forceposix github.com/umputun/revdiff/app@latest
+```
+Installs as `app`/`app.exe` (named after the package dir) — rename to `revdiff` and put it on your `PATH`. `forceposix` keeps `-`/`--` flag parsing consistent and is required on Windows.
+
+**Binary releases:** download from [GitHub Releases](https://github.com/umputun/revdiff/releases) (deb, rpm, archives for linux/darwin/windows amd64/arm64).
 
 ## Claude Code Plugin
 
@@ -14,7 +22,7 @@ brew install umputun/apps/revdiff
 /plugin install revdiff@revdiff
 ```
 
-Use: `/revdiff [base] [against]` — opens review session in a terminal overlay (tmux, Zellij, herdr, kitty, wezterm, cmux, ghostty, iTerm2, or Emacs vterm).
+Use: `/revdiff [base] [against]` — opens review session in a terminal overlay (tmux, Zellij, herdr, kitty, wezterm, cmux, ghostty, iTerm2, Emacs vterm, or Windows Terminal).
 
 cmux is detected before ghostty when `$CMUX_SURFACE_ID` is set, `__CFBundleIdentifier=com.cmuxterm.app`, or `GHOSTTY_RESOURCES_DIR` / `GHOSTTY_BIN_DIR` contains `cmux.app`, so cmux uses the cmux CLI instead of Ghostty AppleScript.
 

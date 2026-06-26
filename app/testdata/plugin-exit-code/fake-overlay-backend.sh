@@ -121,6 +121,14 @@ case "$cmd_name" in
                 ;;
         esac
         ;;
+    wt|wt.exe)
+        # fake Windows Terminal: run the trailing launch script (the last arg,
+        # after `wt -w new new-tab --title <t> <bash> <script>`)
+        last=""
+        for last in "$@"; do :; done
+        bash "$last"
+        exit $?
+        ;;
     *)
         echo "unexpected fake backend: $cmd_name" >&2
         exit 1

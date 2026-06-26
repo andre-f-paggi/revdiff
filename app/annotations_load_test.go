@@ -5,9 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -282,12 +280,9 @@ func TestPreloadAnnotations_UntrackedListError(t *testing.T) {
 }
 
 func TestPreloadAnnotations_RejectsNonRegularFile(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("FIFO not portable")
-	}
 	dir := t.TempDir()
 	fifo := filepath.Join(dir, "fifo")
-	require.NoError(t, syscall.Mkfifo(fifo, 0o600))
+	mkfifo(t, fifo)
 
 	store := annotation.NewStore()
 	r := &mocks.RendererMock{}

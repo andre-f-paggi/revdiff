@@ -30,7 +30,7 @@ jobs:
 
       - name: build and test
         run: |
-          go test -race -timeout=100s -covermode=atomic -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
+          go test -tags forceposix -race -timeout=100s -covermode=atomic -coverprofile=$GITHUB_WORKSPACE/profile.cov_tmp ./...
           grep -v -E "_mock.go|/mocks/" $GITHUB_WORKSPACE/profile.cov_tmp > $GITHUB_WORKSPACE/profile.cov
 
       - name: golangci-lint
@@ -63,3 +63,23 @@ jobs:
       - name: shellcheck
         run: |
           find . -name '*.sh' -not -path './.git/*' -not -path './vendor/*' -print0 | xargs -0 shellcheck
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: set up go 1.26
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
+        id: go
+
+      - name: build
+        run: go build -tags forceposix ./...
+
+      - name: test
+        run: go test -tags forceposix ./...

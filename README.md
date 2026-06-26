@@ -71,7 +71,19 @@ sudo dpkg -i revdiff_*.deb
 sudo rpm -i revdiff_*.rpm
 ```
 
-**Binary releases:** download from [GitHub Releases](https://github.com/umputun/revdiff/releases) (deb, rpm, archives for linux/darwin amd64/arm64).
+**Windows:**
+
+Download `revdiff_*_windows_*.zip` for your architecture from [GitHub Releases](https://github.com/umputun/revdiff/releases), extract `revdiff.exe`, and add it to your `PATH`. For the Claude Code plugin on Windows, install **Git Bash** (bundled with [Git for Windows](https://git-scm.com/download/win)) and run inside **Windows Terminal** — the launcher runs under Git Bash and opens revdiff in a new `wt.exe` window.
+
+**Go (any platform):**
+
+```bash
+go install -tags forceposix github.com/umputun/revdiff/app@latest
+```
+
+The binary is named `app`/`app.exe` after its package directory — rename it to `revdiff` and put it on your `PATH`. The `forceposix` build tag keeps `-`/`--` flag parsing consistent on every platform; it is required on Windows (without it, arguments like `/c/path` are parsed as options) and harmless elsewhere.
+
+**Binary releases:** download from [GitHub Releases](https://github.com/umputun/revdiff/releases) (deb, rpm, archives for linux/darwin/windows amd64/arm64).
 
 ## Claude Code Plugin
 
@@ -91,12 +103,15 @@ The plugin requires one of the following terminals since Claude Code itself cann
 | **ghostty** | AppleScript split + zoom (macOS only) | `$TERM_PROGRAM` + AppleScript probe |
 | **iTerm2** | `osascript` split pane (macOS only) | `$ITERM_SESSION_ID` env var |
 | **Emacs vterm** | New frame via `emacsclient` | `$INSIDE_EMACS` env var |
+| **Windows Terminal** | `wt.exe -w new` (own window, blocks via sentinel) | `$WT_SESSION` env var |
 
-Priority: tmux → Zellij → herdr → kitty → wezterm/Kaku → cmux → ghostty → iTerm2 → Emacs vterm (first detected wins). If none are available, the plugin exits with an error.
+Priority: tmux → Zellij → herdr → kitty → wezterm/Kaku → cmux → ghostty → iTerm2 → Emacs vterm → Windows Terminal (first detected wins). If none are available, the plugin exits with an error.
 
 > **Note:** cmux is detected before ghostty when `$CMUX_SURFACE_ID` is set, `__CFBundleIdentifier=com.cmuxterm.app`, or `GHOSTTY_RESOURCES_DIR` / `GHOSTTY_BIN_DIR` contains `cmux.app`. The cmux block uses the cmux CLI (`new-split` + `send --surface`) instead of Ghostty's AppleScript API.
 
 > **Note:** iTerm2 uses a split pane (vertical or horizontal, auto-detected from terminal dimensions) rather than a full-screen overlay. The iTerm2 AppleScript API does not expose a zoom command, so the split view shares screen space with the invoking session.
+
+> **Note:** Windows Terminal is detected via `$WT_SESSION` and opens revdiff in its own window with `wt.exe -w new`, which closes when you quit (no split pane sharing the caller's window, and no leftover render artifacts). The launcher is a bash script, so on Windows it runs under Git Bash (its `revdiff`, `bash`, and `wt.exe` must be reachable from the Git Bash `PATH`).
 
 > **Note:** Ghostty and iTerm2 launchers use `osascript` (Apple Events), which is blocked by Claude Code's sandbox. If you use these terminals with sandbox enabled, add the launcher to `excludedCommands` in your Claude Code `settings.json`:
 >
@@ -108,7 +123,7 @@ Priority: tmux → Zellij → herdr → kitty → wezterm/Kaku → cmux → ghos
 > }
 > ```
 >
-> Terminals that use CLI tools instead of AppleScript (tmux, Zellij, herdr, kitty, wezterm, cmux) are not affected.
+> Terminals that use CLI tools instead of AppleScript (tmux, Zellij, herdr, kitty, wezterm, cmux, Windows Terminal) are not affected.
 
 **Install:**
 
@@ -384,6 +399,16 @@ revdiff --dump-config > ~/.config/revdiff/config
 ```
 
 Then uncomment and edit the values you want to change.
+
+**On Windows:** the `~/.config/revdiff/` paths resolve under your home directory — config, `keybindings`, `themes\`, and `history\` all live in `C:\Users\<you>\.config\revdiff\` (revdiff uses the home dir, not `%APPDATA%`). The `bash` examples throughout this README work as-is in **Git Bash**. From PowerShell, write config files as **UTF-8 without a BOM** — revdiff rejects a byte-order mark with `unknown option` on the first line, and Windows PowerShell 5.1's `>` and `Out-File` add one:
+
+```powershell
+$cfg = "$HOME\.config\revdiff\config"
+New-Item -ItemType Directory -Force (Split-Path $cfg) | Out-Null
+[IO.File]::WriteAllText($cfg, (revdiff --dump-config | Out-String))
+```
+
+Use the same pattern for `--dump-keys` and `--dump-theme`.
 
 ### Themes
 

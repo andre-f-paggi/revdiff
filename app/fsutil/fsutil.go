@@ -26,7 +26,7 @@ func AtomicWriteFile(path string, data []byte) error {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("closing temp file: %w", err)
 	}
-	if err := os.Rename(tmp, path); err != nil {
+	if err := renameWithRetry(tmp, path); err != nil {
 		_ = os.Remove(tmp)
 		return fmt.Errorf("renaming temp file: %w", err)
 	}

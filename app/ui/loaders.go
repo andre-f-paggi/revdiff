@@ -450,7 +450,9 @@ func (m Model) workDirRel(path string) string {
 	if err != nil || strings.HasPrefix(rel, "..") {
 		return ""
 	}
-	return rel
+	// entries and patterns are compared with forward slashes (git paths,
+	// "/"+suffix); filepath.Rel yields backslashes on Windows, so normalize.
+	return filepath.ToSlash(rel)
 }
 
 // computeFileStats counts added and removed lines in the current file.
